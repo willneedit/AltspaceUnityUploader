@@ -26,6 +26,7 @@ namespace AltSpace_Unity_Uploader
 
         public static bool HasLoadedKits { get { return _known_kits.Count > 0; } }
 
+        public static string kitRoot {  get { return _selected_kitroot; } }
 
         public static void ShowSelectedKit()
         {

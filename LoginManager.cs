@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿#if UNITY_EDITOR
+
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -133,7 +135,7 @@ namespace AltSpace_Unity_Uploader
             switch(m_selectedTab)
             {
                 case 0: // Kits
-                    OnlineKitManager.ManageKits();
+                    OnlineKitManager.ManageKits(this);
                     break;
                 case 1: // Templates
                     // ManageTemplates();
@@ -201,3 +203,5 @@ namespace AltSpace_Unity_Uploader
         }
     }
 }
+
+#endif // UNITY_EDITOR

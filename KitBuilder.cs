@@ -1,4 +1,7 @@
-﻿using System.Collections;
+﻿#if UNITY_EDITOR
+
+using Ionic.Zip;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -12,6 +15,89 @@ namespace AltSpace_Unity_Uploader
     {
         private string rootDir;
 
+        private static void CreateScreenshot(GameObject prefab)
+        {
+            if (!SettingsManager.settings.KitsGenerateScreenshot) return;
+
+            string shotsPath = Path.Combine(OnlineKitManager.kitRoot, "Screenshots");
+
+            Texture2D assetPreview = null;
+            for(int tmo = 0;tmo < 50; ++tmo)
+            {
+                if ((assetPreview = AssetPreview.GetAssetPreview(prefab)) != null) break;
+                System.Threading.Thread.Sleep(6);
+            }
+
+            // No preview within five minutes, something has to be wrong.
+            if (assetPreview == null) return;
+
+            // Turn all background pixels to transparent.
+            Color blankPixel = assetPreview.GetPixel(0, 0);
+            for(int x = 0;x < assetPreview.width; ++x)
+                for(int y = 0;y < assetPreview.height; ++y)
+                    if (assetPreview.GetPixel(x, y) == blankPixel)
+                        assetPreview.SetPixel(x, y, Color.clear);
+
+            assetPreview.alphaIsTransparency = true;
+            assetPreview.Apply();
+
+            if (!Directory.Exists(shotsPath))
+                Directory.CreateDirectory(shotsPath);
+
+            byte[] bytes = assetPreview.EncodeToPNG();
+
+            string pngPath = Path.Combine(shotsPath, prefab.name + ".png");
+            File.WriteAllBytes(pngPath, bytes);
+        }
+
+        private static void RedoLights(GameObject go)
+        {
+            if (!SettingsManager.settings.KitsSetLightLayer) return;
+
+            Light[] ls = go.GetComponentsInChildren<Light>();
+
+            foreach(Light l in ls)
+            {
+                l.lightmapBakeType = LightmapBakeType.Realtime;
+                l.cullingMask |= 1 << 15;
+            }
+        }
+
+        private static void RedoShaders(GameObject go)
+        {
+            int shaderSel = SettingsManager.settings.KitsSelectShader;
+
+            Shader sh = null;
+
+            if (shaderSel == 1)
+                sh = Shader.Find("MRE/DiffuseVertex");
+            else if (shaderSel == 2)
+                sh = Shader.Find("MRE/Unlit (Supports Lightmap)");
+
+            // Either 'no change' or shader not found.
+            if (sh == null) return;
+
+            Renderer[] rs = go.GetComponentsInChildren<Renderer>();
+
+            foreach (Renderer r in rs)
+                r.sharedMaterial.shader = sh;
+        }
+
+        private static void NormalizeGO(GameObject go)
+        {
+            Settings s = SettingsManager.settings;
+
+            if (s.KitsNormalizePos)
+                go.transform.localPosition = new Vector3(0, 0, 0);
+
+            if (s.KitsNormalizeRot)
+                go.transform.localEulerAngles = new Vector3(0, 0, 0);
+
+            if (s.KitsNormalizeScale)
+                go.transform.localScale = new Vector3(1, 1, 1);
+        }
+
+
         /// <summary>
         /// Copies the collider component onto target, retaining its properties and transform in world space
         /// </summary>
@@ -19,7 +105,7 @@ namespace AltSpace_Unity_Uploader
         /// <param name="target">the target hierarchy</param>
         /// <param name="useSubObject">place the collider on a sub object, rather than target itself</param>
         /// <returns>true if collider has been added</returns>
-        public static bool CopyCollider(Collider source, GameObject target, bool useSubObject)
+        private static bool CopyCollider(Collider source, GameObject target, bool useSubObject)
         {
             if(useSubObject)
             {
@@ -102,6 +188,13 @@ namespace AltSpace_Unity_Uploader
             modelTr.name = "model";
 
             GameObject collider = new GameObject("collider");
+
+            // Reset to layer 14 if so demanded, else keep it at the same layer as the model
+            if (SettingsManager.settings.KitsSetLayer)
+                collider.layer = 14;
+            else
+                collider.layer = model.layer;
+
             collider.transform.SetParent(kiRoot.transform);
 
             modelTr.transform.SetAsFirstSibling();
@@ -157,34 +250,113 @@ namespace AltSpace_Unity_Uploader
 
                 GameObject go = gos[index];
 
-                // TODO: Setting layer
-                // TODO: Setting light layer
-                // TODO: Normalization of game object (resetting transform)
-                // TODO: Shaders
+                Renderer[] rs = go.GetComponentsInChildren<Renderer>();
 
-                // ApplyGameObjectFixes(go);
+                // Add a dummy mesh and meshRenderer (disabled) if there's none found in the game object.
+                if(rs.Length < 1)
+                {
+                    GameObject tmp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+                    MeshRenderer mr = go.AddComponent<MeshRenderer>();
+                    mr.enabled = false;
+                    MeshFilter mf = go.AddComponent<MeshFilter>();
+                    mf.sharedMesh = tmp.GetComponent<MeshFilter>().sharedMesh;
+                    DestroyImmediate(tmp);
+                }
+
+                NormalizeGO(go);
+
+                RedoLights(go);
+
+                RedoShaders(go);
 
                 GameObject res = RearrangeGameObject(go);
 
                 string tgtPath = Path.Combine(OnlineKitManager.kitRoot, res.name + ".prefab");
-                GameObject prefab = PrefabUtility.SaveAsPrefabAssetAndConnect(res, tgtPath, InteractionMode.UserAction);
-                AssetDatabase.Refresh();
+                GameObject prefab = null;
 
-                // TODO: Config: Remove item after conversion
-                // DestroyImmediate(res);
+                if(SettingsManager.settings.KitsRemoveWhenGenerated)
+                {
+                    prefab = PrefabUtility.SaveAsPrefabAsset(res, tgtPath);
+                    DestroyImmediate(res);
+                }
+                else
+                    prefab = PrefabUtility.SaveAsPrefabAssetAndConnect(res, tgtPath, InteractionMode.UserAction);
 
-                // TODO: Screenshot
+
+                CreateScreenshot(prefab);
             }
 
+            AssetDatabase.Refresh();
             EditorUtility.ClearProgressBar();
         }
 
-        public KitBuilder(string rootDirectory)
-            : base()
+        public static void BuildKitAssetBundle(List<BuildTarget> architectures, bool includeScreenshots, string targetFileName = null)
         {
-            rootDir = rootDirectory;
-        }
+            string kitName = Path.GetFileName(OnlineKitManager.kitRoot);
+            string screenshotSrc = Path.Combine(OnlineKitManager.kitRoot, "Screenshots");
+            string tmpSaveLocation = Common.CreateTempDirectory();
 
+            string screenshotsSave = Path.Combine(tmpSaveLocation, "Screenshots");
+
+            if (targetFileName == null)
+                targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, kitName.ToLower() + ".zip"), false, true, "zip");
+
+            // Gather screenshots
+            if (includeScreenshots && Directory.Exists(screenshotSrc))
+            {
+                if (!Directory.Exists(screenshotsSave))
+                    Directory.CreateDirectory(screenshotsSave);
+
+                foreach (string srcFile in Directory.GetFiles(screenshotSrc))
+                {
+                    if (Path.GetExtension(srcFile) != ".png")
+                        continue;
+
+                    string srcFileName = Path.GetFileName(srcFile);
+                    File.Copy(srcFile, Path.Combine(screenshotsSave, srcFileName));
+                }
+            }
+
+            // Gather assets and create asset bundle for the given architecture
+            string[] assetFiles = Directory.GetFiles(OnlineKitManager.kitRoot);
+            AssetBundleBuild[] abb =
+            {
+                new AssetBundleBuild()
+                {
+                    assetBundleName = kitName,
+                    assetNames = assetFiles
+                }
+            };
+
+            foreach(BuildTarget architecture in architectures)
+            {
+                string assetBundlesSave = Path.Combine(tmpSaveLocation, "AssetBundles");
+                if (architecture == BuildTarget.Android)
+                    assetBundlesSave = Path.Combine(assetBundlesSave, "Android");
+                else if (architecture == BuildTarget.StandaloneOSX)
+                    assetBundlesSave = Path.Combine(assetBundlesSave, "Mac");
+
+                if (!Directory.Exists(assetBundlesSave))
+                    Directory.CreateDirectory(assetBundlesSave);
+
+                AssetBundleManifest am = BuildPipeline.BuildAssetBundles(
+                    assetBundlesSave,
+                    abb,
+                    BuildAssetBundleOptions.StrictMode,
+                    architecture);
+            }
+
+            using (ZipFile zipFile = new ZipFile())
+            {
+                zipFile.AddDirectory(tmpSaveLocation);
+                zipFile.Save(targetFileName);
+            }
+
+            Directory.Delete(tmpSaveLocation, true);
+        }
 
     }
 }
+
+#endif // UNITY_EDITOR

@@ -1,8 +1,12 @@
-﻿using System;
+﻿#if UNITY_EDITOR
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -20,35 +24,34 @@ namespace AltSpace_Unity_Uploader
         }
 
         private static Dictionary<string, kitInfo> _known_kits = new Dictionary<string, kitInfo>();
-        private static string _selected_kit = null;
-        private static string _selected_kitroot = null;
+        private static kitInfo _selected_kit = new kitInfo() { kitroot_directory = "" };
         private Vector2 _scrollPosition;
 
         public static bool HasLoadedKits { get { return _known_kits.Count > 0; } }
+        public static bool HasKitRootSelected { get { return !String.IsNullOrEmpty(_selected_kit.kitroot_directory); } }
+        public static bool HasKitSelected { get { return _selected_kit.kit_data.kit_id != null; } }
 
-        public static string kitRoot {  get { return _selected_kitroot; } }
+        public static string kitRoot {  get { return _selected_kit.kitroot_directory; } }
 
         public static void ShowSelectedKit()
         {
             if(LoginManager.IsConnected)
-                Common.DisplayStatus("Selected Kit:", "none", _selected_kit);
+            {
+                EditorGUILayout.LabelField("Selected Kit:");
+                Common.DisplayStatus("  Name:", "none", _selected_kit.kit_data.name);
+                Common.DisplayStatus("  ID:", "none", _selected_kit.kit_data.kit_id);
+            }
 
-            if(_selected_kit != null)
+            if (HasKitSelected)
             {
                 GUILayout.Space(10);
 
-                kitInfo kit = null;
-                if(_known_kits.TryGetValue(_selected_kit, out kit))
-                {
-                    GUILayout.Label("Kit contents:");
-                    Common.DescribeAssetBundles(kit.kit_data.asset_bundles);
-                }
-                else
-                    Common.DisplayStatus("Kit contents:", "Not loaded", null);
+                GUILayout.Label("Kit contents:");
+                Common.DescribeAssetBundles(_selected_kit.kit_data.asset_bundles);
 
             }
 
-            _selected_kitroot = Common.FileSelectionField(new GUIContent("Kit Prefab Directory:"), true, false, _selected_kitroot);
+            _selected_kit.kitroot_directory = Common.FileSelectionField(new GUIContent("Kit Prefab Directory:"), true, false, _selected_kit.kitroot_directory);
         }
 
         public static void ResetContents()
@@ -56,18 +59,17 @@ namespace AltSpace_Unity_Uploader
             OnlineKitManager window = GetWindow<OnlineKitManager>();
             window.Close();
             _known_kits = new Dictionary<string, kitInfo>();
-            _selected_kit = null;
-            _selected_kitroot = null;
+            _selected_kit = new kitInfo();
         }
 
-        private Dictionary<string, string> knownKitDirectories = new Dictionary<string, string>();
+        private static Dictionary<string, string> knownKitDirectories = new Dictionary<string, string>();
 
         private static string GetSuggestedKitDirectory(string kit_id, string kit_name)
         {
-            return SettingsManager.settings.KitsRootDirectory + "/" + kit_id + "_" + Common.SanitizeFileName(kit_name);
+            return SettingsManager.settings.KitsRootDirectory + "/" + kit_id + "_" + Common.SanitizeFileName(kit_name).ToLower();
         }
 
-        private string GetKnownKitDirectory(string kit_id, string kit_name)
+        private static string GetKnownKitDirectory(string kit_id, string kit_name)
         {
             string path;
 
@@ -163,12 +165,12 @@ namespace AltSpace_Unity_Uploader
             return kit_id;
         }
 
-        private void EnterKitData(kitJSON kit)
+        private static void EnterKitData(kitJSON kit)
         {
             if (kit.name != null && kit.user_id == LoginManager.userid)
             {
-                _known_kits.Remove(kit.name);
-                _known_kits.Add(kit.name, new kitInfo()
+                _known_kits.Remove(kit.kit_id);
+                _known_kits.Add(kit.kit_id, new kitInfo()
                 {
                     kitroot_directory = GetKnownKitDirectory(kit.kit_id, kit.name),
                     kit_data = kit
@@ -176,7 +178,7 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        private bool LoadSingleKit(string kit_id)
+        private static bool LoadSingleKit(string kit_id)
         {
             try
             {
@@ -265,12 +267,11 @@ namespace AltSpace_Unity_Uploader
                 {
                     EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
 
-                    EditorGUILayout.LabelField(kit.Key);
+                    EditorGUILayout.LabelField(kit.Value.kit_data.name);
                     GUILayout.FlexibleSpace();
                     if (GUILayout.Button("Select", EditorStyles.miniButton))
                     {
-                        _selected_kit = kit.Key;
-                        _selected_kitroot = kit.Value.kitroot_directory;
+                        _selected_kit = _known_kits[kit.Value.kit_data.kit_id];
                         this.Close();
                         GetWindow<LoginManager>().Repaint();
                     }
@@ -299,17 +300,14 @@ namespace AltSpace_Unity_Uploader
                 {
                     string kit_id = CreateKit(window.kitName, window.description, window.imageFile);
                     if (LoadSingleKit(kit_id))
-                    {
-                        _selected_kit = window.kitName;
-                        _selected_kitroot = GetKnownKitDirectory(_selected_kit, window.kitName);
-                    }
+                        _selected_kit = _known_kits[kit_id];
                 }
             }
             // CreateKit("__AUUTest", "This is a test for the AUU kit creation", "D:/Users/carsten/Pictures/Sweet-Fullscene.png");
             GUILayout.EndVertical();
         }
 
-        public static void ManageKits()
+        public static void ManageKits(EditorWindow parent)
         {
             if (LoginManager.IsConnected)
             {
@@ -327,16 +325,15 @@ namespace AltSpace_Unity_Uploader
 
             ShowSelectedKit();
 
-            string kit_id = (_selected_kit != null) ? _known_kits[_selected_kit].kit_data.kit_id : "";
+            string kit_id = _selected_kit.kit_data.kit_id;
 
-            bool hasKitRootSelected = _selected_kitroot != null && _selected_kitroot != "";
-            bool existsKitRoot = hasKitRootSelected && Directory.Exists(_selected_kitroot);
+            bool existsKitRoot = HasKitRootSelected && Directory.Exists(kitRoot);
             bool isStandardKitRoot =
-                hasKitRootSelected
-                && (_selected_kit == null ||
-                GetSuggestedKitDirectory(kit_id, _selected_kit) == _selected_kitroot);
+                HasKitRootSelected
+                && (kit_id == null ||
+                GetSuggestedKitDirectory(kit_id, _selected_kit.kit_data.name) == kitRoot);
 
-            if(hasKitRootSelected && !isStandardKitRoot)
+            if(HasKitRootSelected && !isStandardKitRoot)
             {
                 GUILayout.Label("The directory name doesn't match the standard format.\nRenaming the directory is recommended. ", new GUIStyle()
                 {
@@ -345,17 +342,17 @@ namespace AltSpace_Unity_Uploader
                 });
                 if (GUILayout.Button("Rename kit prefab directory"))
                 {
-                    string new_kitroot = GetSuggestedKitDirectory(kit_id, _selected_kit);
+                    string new_kitroot = GetSuggestedKitDirectory(kit_id, _selected_kit.kit_data.name);
                     if (existsKitRoot)
                     {
-                        File.Delete(_selected_kitroot + ".meta");
-                        Directory.Move(_selected_kitroot, new_kitroot);
+                        File.Delete(kitRoot + ".meta");
+                        Directory.Move(kitRoot, new_kitroot);
                     }
-                    _selected_kitroot = new_kitroot;
+                    _selected_kit.kitroot_directory = new_kitroot;
                     AssetDatabase.Refresh();
                 }
             }
-            if(hasKitRootSelected && !existsKitRoot)
+            if(HasKitRootSelected && !existsKitRoot)
             {
                 GUILayout.Label("The directory doesn't exist.\nPress the button below to create it.", new GUIStyle()
                 {
@@ -364,7 +361,7 @@ namespace AltSpace_Unity_Uploader
                 });
                 if (GUILayout.Button("Create kit prefab directory"))
                 {
-                    Directory.CreateDirectory(_selected_kitroot);
+                    Directory.CreateDirectory(kitRoot);
                     AssetDatabase.Refresh();
                 }
             }
@@ -372,7 +369,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.BeginHorizontal();
 
-            if(!hasKitRootSelected)
+            if(!HasKitRootSelected)
                 GUILayout.Label("You need to set a directory before you can build kits.", new GUIStyle()
                 {
                     fontStyle = FontStyle.Bold,
@@ -381,12 +378,18 @@ namespace AltSpace_Unity_Uploader
             else if(existsKitRoot)
             {
                 if (GUILayout.Button("Build"))
-                    _ = 1; // KitBuild();
+                {
+                    BuildKit();
+                    parent.ShowNotification(new GUIContent("Kit creation finished"), 5.0f);
+                }
 
-                if(_selected_kit != null)
+                if (HasKitSelected)
                 {
                     if (GUILayout.Button("Build & Upload"))
-                        _ = 1; //KitBuildUpload();
+                    {
+                        BuildAndUploadKit();
+                        parent.ShowNotification(new GUIContent("Kit upload finished"), 5.0f);
+                    }
                 }
 
             }
@@ -394,5 +397,101 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.EndHorizontal();
         }
+
+        private static void BuildKit()
+        {
+            List<BuildTarget> targets = new List<BuildTarget>();
+            if (SettingsManager.settings.BuildForPC)
+                targets.Add(BuildTarget.StandaloneWindows);
+
+            if (SettingsManager.settings.BuildForAndroid)
+                targets.Add(BuildTarget.Android);
+
+            if (SettingsManager.settings.BuildForMac)
+                targets.Add(BuildTarget.StandaloneOSX);
+
+            KitBuilder.BuildKitAssetBundle(targets, true);
+        }
+
+        private static void BuildAndUploadKit()
+        {
+            List<BuildTarget> targets = new List<BuildTarget>();
+            if (SettingsManager.settings.BuildForPC)
+                targets.Add(BuildTarget.StandaloneWindows);
+
+            if (SettingsManager.settings.BuildForAndroid)
+                targets.Add(BuildTarget.Android);
+
+            if (SettingsManager.settings.BuildForMac)
+                targets.Add(BuildTarget.StandaloneOSX);
+
+            string kitUploadDir = Common.CreateTempDirectory();
+
+            Task<HttpResponseMessage> uploadTask = null;
+            bool addScreenshots = true;
+
+            foreach (BuildTarget target in targets)
+            {
+                if (uploadTask != null)
+                {
+                    HttpResponseMessage result = uploadTask.Result;
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        Debug.LogWarning("Error during kit upload:" + result.StatusCode);
+                        Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
+
+                        // Continue with other architectures even if one failed.
+                        // break;
+                    }
+                }
+
+                uploadTask = null;
+
+                string kitUploadFile = Path.Combine(kitUploadDir, "kitUpload");
+                if (target == BuildTarget.StandaloneOSX)
+                    kitUploadFile += "_Mac.zip";
+                else if (target == BuildTarget.Android)
+                    kitUploadFile += "_Android.zip";
+                else
+                    kitUploadFile += ".zip";
+
+                List<BuildTarget> singleTarget = new List<BuildTarget>();
+                singleTarget.Add(target);
+
+                KitBuilder.BuildKitAssetBundle(singleTarget, addScreenshots, kitUploadFile);
+
+                MultipartFormDataContent form = new MultipartFormDataContent();
+                ByteArrayContent zipContents = new ByteArrayContent(File.ReadAllBytes(kitUploadFile));
+
+                // Explicitly set content type
+                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+
+                form.Add(zipContents, "kit[zip]", Path.GetFileName(OnlineKitManager.kitRoot.ToLower()) + ".zip");
+                form.Add(new StringContent("" + Common.usingUnityVersion), "kit[game_engine_version]");
+
+                uploadTask =
+                    LoginManager.GetHttpClient().PutAsync("/api/kits/" + _selected_kit.kit_data.kit_id + ".json", form);
+
+                addScreenshots = false;
+            }
+
+            // And wait for the final upload to be finished.
+            if (uploadTask != null)
+            {
+                HttpResponseMessage result = uploadTask.Result;
+                if (!result.IsSuccessStatusCode)
+                    Debug.LogWarning("Error during kit upload:" + result.StatusCode);
+            }
+
+            Directory.Delete(kitUploadDir, true);
+
+            // Reload kit data (and update display)
+            LoadSingleKit(_selected_kit.kit_data.kit_id);
+            _selected_kit = _known_kits[_selected_kit.kit_data.kit_id];
+
+        }
+
     }
 }
+
+#endif // UNITY_EDITOR

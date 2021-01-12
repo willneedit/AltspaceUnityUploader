@@ -55,10 +55,10 @@ namespace AltSpace_Unity_Uploader
     [Serializable]
     public class kitJSON
     {
-        public string name;
-        public bool is_featured;
-        public string kit_id;
-        public string user_id;
+        public string name = null;
+        public bool is_featured = false;
+        public string kit_id = null;
+        public string user_id = null;
         public List<assetBundleJSON> asset_bundles = new List<assetBundleJSON>();
     }
 

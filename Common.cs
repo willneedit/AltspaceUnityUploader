@@ -1,5 +1,8 @@
-﻿using System;
+﻿#if UNITY_EDITOR
+
+using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -7,7 +10,8 @@ namespace AltSpace_Unity_Uploader
 {
     public class Common
     {
-        public static int currentUnityVersion { get { return 20194; } }
+        public static readonly int usingUnityVersion = 20194;
+        public static readonly int currentUnityVersion = 20194;
         public static void DisplayStatus(string caption, string defaultText, string activeText, string goodText = null)
         {
             EditorGUILayout.BeginHorizontal();
@@ -60,8 +64,8 @@ namespace AltSpace_Unity_Uploader
 
             DateTime t = new DateTime(years, months, days, hours, minutes, seconds);
             // *remove* the timezone offset
-            t.AddHours(-offs_hours);
-            t.AddMinutes(-offs_minutes);
+            t = t.AddHours(-offs_hours);
+            t = t.AddMinutes(-offs_minutes);
 
             return t;
         }
@@ -165,7 +169,7 @@ namespace AltSpace_Unity_Uploader
         }
 
         // The file and directory dialog need some serious boilerplate to actually be useful.
-        private static string OpenFileDialog(string path, bool folder, bool save, string extension)
+        public static string OpenFileDialog(string path, bool folder, bool save, string extension)
         {
             string newPath;
             if (folder)
@@ -218,5 +222,24 @@ namespace AltSpace_Unity_Uploader
             return kit_id;
 
         }
+
+        /// <summary>
+        /// Create a temporary directory with a unique name
+        /// </summary>
+        /// <returns>Directory path</returns>
+        public static string CreateTempDirectory()
+        {
+            string kitUploadDir;
+            do
+            {
+                kitUploadDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            } while (Directory.Exists(kitUploadDir));
+
+            Directory.CreateDirectory(kitUploadDir);
+            return kitUploadDir;
+        }
+
     }
 }
+
+#endif // UNITY_EDITOR

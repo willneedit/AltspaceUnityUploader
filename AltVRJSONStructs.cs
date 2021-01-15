@@ -5,6 +5,11 @@ using UnityEngine;
 
 namespace AltSpace_Unity_Uploader
 {
+    public interface IPaginated
+    {
+        paginationJSON pages { get; }
+    }
+
     /// <summary>
     /// Part of a user entry
     /// </summary>
@@ -31,9 +36,9 @@ namespace AltSpace_Unity_Uploader
     [Serializable]
     public class paginationJSON
     {
-        public int page;
-        public int pages;
-        public int count;
+        public int page = 0;
+        public int pages = 0;
+        public int count = 0;
     }
 
     /// <summary>
@@ -66,9 +71,47 @@ namespace AltSpace_Unity_Uploader
     /// A single page of kits
     /// </summary>
     [Serializable]
-    public class kitsJSON
+    public class kitsJSON : IPaginated
     {
         public List<kitJSON> kits = new List<kitJSON>();
-        public paginationJSON pagination;
+        public paginationJSON pagination = new paginationJSON();
+
+        public paginationJSON pages { get { return pagination; } }
+    }
+
+
+    /// <summary>
+    /// Collection of AssetBundles, coined to a specific user, inside a template.
+    /// </summary>
+    [Serializable]
+    public class assetBundleSceneJSON
+    {
+        public string user_id = null;
+        public List<assetBundleJSON> asset_bundles = new List<assetBundleJSON>();
+    }
+
+    /// <summary>
+    /// A single template
+    /// </summary>
+    [Serializable]
+    public class templateJSON
+    {
+        public string space_template_sid = null;    // Long sid
+        public string activity_name = null;         // friendly name
+        public string description = null;
+        public string space_template_id = null;     // ID used in URLs
+        public List<assetBundleSceneJSON> asset_bundle_scenes = new List<assetBundleSceneJSON>(); // asset Bundles coined to different users? Strange.
+    }
+
+    /// <summary>
+    /// A single page of templates
+    /// </summary>
+    [Serializable]
+    public class templatesJSON : IPaginated
+    {
+        public List<templateJSON> space_templates = new List<templateJSON>();
+        public paginationJSON pagination = new paginationJSON();
+
+        public paginationJSON pages { get { return pagination; } }
     }
 }

@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
 
+using Ionic.Zip;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,8 +11,21 @@ namespace AltSpace_Unity_Uploader
 {
     public class Common
     {
-        public static readonly int usingUnityVersion = 20194;
         public static readonly int currentUnityVersion = 20194;
+
+        private static int _usingUnityVersion = 0;
+
+        public static int usingUnityVersion { get
+            {
+                if (_usingUnityVersion == 0)
+                {
+                    string[] parts = Application.unityVersion.Split('.');
+                    int.TryParse(parts[0] + parts[1], out _usingUnityVersion);
+                }
+
+                return _usingUnityVersion;
+            }
+        }
         public static void DisplayStatus(string caption, string defaultText, string activeText, string goodText = null)
         {
             EditorGUILayout.BeginHorizontal();
@@ -237,6 +251,76 @@ namespace AltSpace_Unity_Uploader
 
             Directory.CreateDirectory(kitUploadDir);
             return kitUploadDir;
+        }
+
+        /// <summary>
+        /// Build a AltspaceVR compliant asset Bundle zip out of the given data
+        /// </summary>
+        /// <param name="assetFiles">Input files (Kit Prefabs or file with preformatted scene)</param>
+        /// <param name="screenshotFiles">Kits: Screenshots to kit items</param>
+        /// <param name="architectures">Architectures to build for</param>
+        /// <param name="tgtRootName">Target root name (must match upload file name of zip file)</param>
+        /// <param name="targetFileName">File name to locally save to (incl. .zip) or null to open dialog</param>
+        /// <returns>The chosen filename</returns>
+        public static string BuildAssetBundle(string[] assetFiles, string[] screenshotFiles, List<BuildTarget> architectures, string tgtRootName, string targetFileName)
+        {
+            string tmpSaveLocation = Common.CreateTempDirectory();
+            string screenshotsSave = Path.Combine(tmpSaveLocation, "Screenshots");
+
+            if (targetFileName == null)
+                targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, tgtRootName.ToLower() + ".zip"), false, true, "zip");
+
+            // Gather screenshots
+            if (screenshotFiles.Length > 0)
+            {
+                if (!Directory.Exists(screenshotsSave))
+                    Directory.CreateDirectory(screenshotsSave);
+
+                foreach (string srcFile in screenshotFiles)
+                {
+                    if (Path.GetExtension(srcFile) != ".png")
+                        continue;
+
+                    string srcFileName = Path.GetFileName(srcFile);
+                    File.Copy(srcFile, Path.Combine(screenshotsSave, srcFileName));
+                }
+            }
+
+            AssetBundleBuild[] abb =
+            {
+                new AssetBundleBuild()
+                {
+                    assetBundleName = tgtRootName,
+                    assetNames = assetFiles
+                }
+            };
+
+            foreach (BuildTarget architecture in architectures)
+            {
+                string assetBundlesSave = Path.Combine(tmpSaveLocation, "AssetBundles");
+                if (architecture == BuildTarget.Android)
+                    assetBundlesSave = Path.Combine(assetBundlesSave, "Android");
+                else if (architecture == BuildTarget.StandaloneOSX)
+                    assetBundlesSave = Path.Combine(assetBundlesSave, "Mac");
+
+                if (!Directory.Exists(assetBundlesSave))
+                    Directory.CreateDirectory(assetBundlesSave);
+
+                AssetBundleManifest am = BuildPipeline.BuildAssetBundles(
+                    assetBundlesSave,
+                    abb,
+                    BuildAssetBundleOptions.StrictMode,
+                    architecture);
+            }
+
+            using (ZipFile zipFile = new ZipFile())
+            {
+                zipFile.AddDirectory(tmpSaveLocation);
+                zipFile.Save(targetFileName);
+            }
+
+            Directory.Delete(tmpSaveLocation, true);
+            return targetFileName;
         }
 
     }

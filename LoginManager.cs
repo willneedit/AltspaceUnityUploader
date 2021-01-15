@@ -1,7 +1,9 @@
 ﻿#if UNITY_EDITOR
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using UnityEditor;
@@ -72,6 +74,178 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         public static bool IsConnected { get { return _cookieContainer != null; } }
 
+        /// <summary>
+        /// Create an item in AltspaceVR.
+        /// </summary>
+        /// <param name="item_singular">'space_template' or 'kit'</param>
+        /// <param name="item_fn">'template' or 'kit'</param>
+        /// <param name="name">Name of item to create</param>
+        /// <param name="description">The description</param>
+        /// <param name="imageFileName">(Optional) Local file name of the image</param>
+        /// <param name="tag_list">(templates only) comma separated tag list</param>
+        /// <returns>The ID of the generated item</returns>
+        public static string CreateAltVRItem(string item_singular, string item_fn, string name, string description, string imageFileName, string tag_list = null)
+        {
+            string item_plural = item_singular + "s";
+            string item_fn_cap = item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1);
+
+            string id_result = null;
+            string authtoken = null;
+
+            string auth_token_pattern = "type=\"hidden\" name=\"authenticity_token\" value=\"";
+            string template_id_pattern = "data-method=\"delete\" href=\"/" + item_plural + "/";
+
+            EditorUtility.DisplayProgressBar("Creating " + item_fn, "Retrieving landing page...", 0.0f);
+
+            try
+            {
+                HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync(item_plural + "/new").Result;
+                string content = result.Content.ReadAsStringAsync().Result;
+                result.EnsureSuccessStatusCode();
+
+                authtoken = Common.GetWebParameter(content, auth_token_pattern);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(e.Message);
+                EditorUtility.ClearProgressBar();
+                return null;
+            }
+
+            EditorUtility.DisplayProgressBar("Creating " + item_fn + "", "Posting new " + item_fn + "...", 0.5f);
+
+            try
+            {
+                MultipartFormDataContent form = new MultipartFormDataContent();
+                ByteArrayContent imageFileContent = null;
+
+                // Web server is not completely standards compliant and requires the form-data headers in the form
+                // name="itemname", rather than also accepting name=itemname.
+                // .NET HttpClient only uses quotes when necessary. Bummer.
+                form.Add(new StringContent("✓"), "\"utf8\"");
+                form.Add(new StringContent(authtoken), "\"authenticity_token\"");
+                form.Add(new StringContent(name), item_singular + "[name]");
+                form.Add(new StringContent(description), item_singular + "[description]");
+
+                if (!String.IsNullOrEmpty(imageFileName))
+                {
+                    imageFileContent = new ByteArrayContent(File.ReadAllBytes(imageFileName));
+                    form.Add(imageFileContent, item_singular + "[image]", Path.GetFileName(imageFileName));
+                }
+                else
+                {
+                    imageFileContent = new ByteArrayContent(new byte[0]);
+                    form.Add(imageFileContent, item_singular + "[image]");
+                }
+
+                if (tag_list != null)
+                    form.Add(new StringContent(tag_list), item_singular + "[tag_list]");
+
+                form.Add(new StringContent("Create " + item_fn_cap), "\"commit\"");
+
+                HttpResponseMessage result = LoginManager.GetHttpClient().PostAsync(item_plural, form).Result;
+                string content = result.Content.ReadAsStringAsync().Result;
+                result.EnsureSuccessStatusCode();
+
+                id_result = Common.GetWebParameter(content, template_id_pattern);
+
+            }
+            catch (HttpRequestException)
+            {
+                Debug.LogError("HTTP Request error");
+            }
+            catch (FileNotFoundException)
+            {
+                Debug.LogError("Image file not found");
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+
+            return id_result;
+        }
+
+        /// <summary>
+        /// Load a single AltVR item (kit or template)
+        /// </summary>
+        /// <typeparam name="T">the data type in question</typeparam>
+        /// <param name="item_id">The ID of the item within the given scope</param>
+        /// <returns>The item, or null</returns>
+        public static T LoadSingleAltVRItem<T>(string item_id)
+        {
+            string item_type_plural;
+
+            if (typeof(T) == typeof(kitJSON))
+                item_type_plural = "kits";
+            else if (typeof(T) == typeof(templateJSON))
+                item_type_plural = "space_templates";
+            else
+                throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
+
+            try
+            {
+                HttpResponseMessage result = GetHttpClient().GetAsync("api/" + item_type_plural + "/" + item_id).Result;
+                result.EnsureSuccessStatusCode();
+
+                return JsonUtility.FromJson<T>(result.Content.ReadAsStringAsync().Result);
+            }
+            catch (HttpRequestException)
+            {
+                Debug.LogError("Error reading Altspace item");
+            }
+
+            return default;
+        }
+
+        public static void LoadAltVRItems<T>(Action<T> callback)
+        {
+            string item_type_plural;
+
+            if (typeof(T) == typeof(kitsJSON))
+                item_type_plural = "kits";
+            else if (typeof(T) == typeof(templatesJSON))
+                item_type_plural = "space_templates";
+            else
+                throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
+
+            int currentPage = 0;
+            int maxPage = 1;
+
+            while (currentPage < maxPage)
+            {
+                EditorUtility.DisplayProgressBar("Reading kit descriptions", "Loading page... (" + currentPage + "/" + maxPage + ")", currentPage / maxPage);
+
+                currentPage++;
+
+                try
+                {
+                    HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync("api/" + item_type_plural + "/my.json?page=" + currentPage).Result;
+                    result.EnsureSuccessStatusCode();
+
+                    T kitsPage = JsonUtility.FromJson<T>(result.Content.ReadAsStringAsync().Result);
+                    IPaginated p = (IPaginated)kitsPage;
+
+                    if (kitsPage == null)
+                        Debug.LogError("Completely malformed JSON");
+                    else if (p.pages == null)
+                        Debug.LogWarning("Pagination information missing -- assuming single page");
+                    else
+                    {
+                        maxPage = p.pages.pages;
+                        callback(kitsPage);
+
+                    }
+                }
+                catch (HttpRequestException)
+                {
+
+                }
+            }
+
+            EditorUtility.ClearProgressBar();
+        }
+
         [MenuItem("AUU/Manage Login", false, 0)]
         public static void ShowLogInWindow()
         {
@@ -138,7 +312,7 @@ namespace AltSpace_Unity_Uploader
                     OnlineKitManager.ManageKits(this);
                     break;
                 case 1: // Templates
-                    // ManageTemplates();
+                    OnlineTemplateManager.ManageTemplates(this);
                     break;
                 default:
                     break;
@@ -188,6 +362,7 @@ namespace AltSpace_Unity_Uploader
         private void DoLogout()
         {
             OnlineKitManager.ResetContents();
+            OnlineTemplateManager.ResetContents();
 
             try
             {

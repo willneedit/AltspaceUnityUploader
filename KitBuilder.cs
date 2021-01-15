@@ -293,67 +293,14 @@ namespace AltSpace_Unity_Uploader
 
         public static void BuildKitAssetBundle(List<BuildTarget> architectures, bool includeScreenshots, string targetFileName = null)
         {
-            string kitName = Path.GetFileName(OnlineKitManager.kitRoot);
             string screenshotSrc = Path.Combine(OnlineKitManager.kitRoot, "Screenshots");
-            string tmpSaveLocation = Common.CreateTempDirectory();
-
-            string screenshotsSave = Path.Combine(tmpSaveLocation, "Screenshots");
-
-            if (targetFileName == null)
-                targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, kitName.ToLower() + ".zip"), false, true, "zip");
-
-            // Gather screenshots
-            if (includeScreenshots && Directory.Exists(screenshotSrc))
-            {
-                if (!Directory.Exists(screenshotsSave))
-                    Directory.CreateDirectory(screenshotsSave);
-
-                foreach (string srcFile in Directory.GetFiles(screenshotSrc))
-                {
-                    if (Path.GetExtension(srcFile) != ".png")
-                        continue;
-
-                    string srcFileName = Path.GetFileName(srcFile);
-                    File.Copy(srcFile, Path.Combine(screenshotsSave, srcFileName));
-                }
-            }
 
             // Gather assets and create asset bundle for the given architecture
             string[] assetFiles = Directory.GetFiles(OnlineKitManager.kitRoot);
-            AssetBundleBuild[] abb =
-            {
-                new AssetBundleBuild()
-                {
-                    assetBundleName = kitName,
-                    assetNames = assetFiles
-                }
-            };
+            string[] screenshotFiles = includeScreenshots ? Directory.GetFiles(screenshotSrc) : new string[0];
+            string tgtRootName = Path.GetFileName(OnlineKitManager.kitRoot);
 
-            foreach(BuildTarget architecture in architectures)
-            {
-                string assetBundlesSave = Path.Combine(tmpSaveLocation, "AssetBundles");
-                if (architecture == BuildTarget.Android)
-                    assetBundlesSave = Path.Combine(assetBundlesSave, "Android");
-                else if (architecture == BuildTarget.StandaloneOSX)
-                    assetBundlesSave = Path.Combine(assetBundlesSave, "Mac");
-
-                if (!Directory.Exists(assetBundlesSave))
-                    Directory.CreateDirectory(assetBundlesSave);
-
-                AssetBundleManifest am = BuildPipeline.BuildAssetBundles(
-                    assetBundlesSave,
-                    abb,
-                    BuildAssetBundleOptions.StrictMode,
-                    architecture);
-            }
-
-            using (ZipFile zipFile = new ZipFile())
-            {
-                zipFile.AddDirectory(tmpSaveLocation);
-                zipFile.Save(targetFileName);
-            }
-
-            Directory.Delete(tmpSaveLocation, true);
+            targetFileName = Common.BuildAssetBundle(assetFiles, screenshotFiles, architectures, tgtRootName, targetFileName);
         }
 
     }

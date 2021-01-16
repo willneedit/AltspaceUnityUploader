@@ -79,7 +79,6 @@ namespace AltSpace_Unity_Uploader
         {
             string result = LoginManager.CreateAltVRItem(
                 "space_template",
-                "template",
                 name,
                 description,
                 imageFileName,
@@ -127,7 +126,7 @@ namespace AltSpace_Unity_Uploader
 
         }
 
-        public static void ManageTemplates(EditorWindow parent)
+        public static void ManageTemplates()
         {
             if (LoginManager.IsConnected)
             {
@@ -239,18 +238,12 @@ namespace AltSpace_Unity_Uploader
             else if(existsTemplateScene)
             {
                 if (GUILayout.Button("Build"))
-                {
-                    // Schedule the build of the template rather than execute in-thread
                     EditorApplication.update += BuildTemplate;
-                }
 
                 if (HasTemplateSelected)
                 {
                     if (GUILayout.Button("Build & Upload"))
-                    {
-                        // BuildAndUploadTemplate();
-                        parent.ShowNotification(new GUIContent("Template upload finished"), 5.0f);
-                    }
+                        EditorApplication.update += BuildAndUploadTemplate;
                 }
 
             }
@@ -265,6 +258,27 @@ namespace AltSpace_Unity_Uploader
             LoginManager window = GetWindow<LoginManager>();
             window.ShowNotification(new GUIContent("Template build finished"), 5.0f);
         }
+
+        private static void BuildAndUploadTemplate()
+        {
+            EditorApplication.update -= BuildAndUploadTemplate;
+
+            List<BuildTarget> targets = SettingsManager.SelectedBuildTargets;
+            string item_type_singular = "space_template";
+            string itemRootName = templateScene.ToLower();
+            string item_id = _selected_template.template_data.space_template_id;
+
+            LoginManager.BuildAndUploadAltVRItem(targets, item_type_singular, itemRootName, item_id);
+
+            // Reload kit data (and update display)
+            LoadSingleTemplate(item_id);
+            _selected_template = _known_templates[item_id];
+
+            LoginManager window = GetWindow<LoginManager>();
+            window.ShowNotification(new GUIContent("Template upload finished"), 5.0f);
+
+        }
+
 
         public static void ShowTemplateSelection()
         {

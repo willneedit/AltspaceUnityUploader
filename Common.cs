@@ -324,6 +324,7 @@ namespace AltSpace_Unity_Uploader
         }
 
     }
+
 }
 
 #endif // UNITY_EDITOR

@@ -34,6 +34,7 @@ namespace AltSpace_Unity_Uploader
         public bool TmplSetLayer = true;
         public bool TmplSetLightLayer = true;
         public bool TmplDeleteCameras = true;
+        public bool TmplFixEnviroLight = true;
 
     }
 
@@ -150,7 +151,7 @@ namespace AltSpace_Unity_Uploader
             if (l14 != null) l14.stringValue = "Nav Mesh";
 
             SerializedProperty l15 = layersProp.GetArrayElementAtIndex(15);
-            if (l15 != null) l15.stringValue = "Avatar Lighting";
+            if (l15 != null) l15.stringValue = "Avatar 15";
 
             tagManager.ApplyModifiedProperties();
         }
@@ -333,6 +334,11 @@ namespace AltSpace_Unity_Uploader
                     "Delete Cameras",
                     "Remove all cameras in the template"),
                     _settings.TmplDeleteCameras);
+
+                _settings.TmplFixEnviroLight = EditorGUILayout.Toggle(new GUIContent(
+                    "Fix Environment Lighting",
+                    "Set Environment Lighting to 'Gradient' and adapt colors if needed"),
+                    _settings.TmplFixEnviroLight);
 
 
             }

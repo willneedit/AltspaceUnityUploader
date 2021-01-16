@@ -57,10 +57,7 @@ namespace AltSpace_Unity_Uploader
             Light[] ls = go.GetComponentsInChildren<Light>();
 
             foreach(Light l in ls)
-            {
                 l.lightmapBakeType = LightmapBakeType.Realtime;
-                l.cullingMask |= 1 << 15;
-            }
         }
 
         private static void RedoShaders(GameObject go)
@@ -152,6 +149,15 @@ namespace AltSpace_Unity_Uploader
                 copy.direction = cc.direction;
                 copy.radius = cc.radius;
                 copy.height = cc.height;
+            }
+            else if(source.GetType() == typeof(TerrainCollider))
+            {
+                TerrainCollider tc = (TerrainCollider)source;
+
+                TerrainCollider copy = target.AddComponent<TerrainCollider>();
+                copy.enabled = tc.enabled;
+                copy.material = tc.material;
+                copy.terrainData = tc.terrainData;
             }
             else
                 Debug.LogWarning("Unsupported type of collider (" + source.GetType().Name + ") for copying. Please use either mesh, box or sphere collider.");

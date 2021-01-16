@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -78,19 +80,28 @@ namespace AltSpace_Unity_Uploader
         /// Create an item in AltspaceVR.
         /// </summary>
         /// <param name="item_singular">'space_template' or 'kit'</param>
-        /// <param name="item_fn">'template' or 'kit'</param>
         /// <param name="name">Name of item to create</param>
         /// <param name="description">The description</param>
         /// <param name="imageFileName">(Optional) Local file name of the image</param>
         /// <param name="tag_list">(templates only) comma separated tag list</param>
+        /// 
         /// <returns>The ID of the generated item</returns>
-        public static string CreateAltVRItem(string item_singular, string item_fn, string name, string description, string imageFileName, string tag_list = null)
+        public static string CreateAltVRItem(string item_singular, string name, string description, string imageFileName, string tag_list = null)
         {
+            string item_fn = null;
+
+            if (item_singular == "space_template")
+                item_fn = "template";
+            else if (item_singular == "kit")
+                item_fn = "kit";
+            else
+                throw new InvalidDataException(item_singular + ": Not a recognized Altspace item");
+
             string item_plural = item_singular + "s";
-            string item_fn_cap = item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1);
+            string commit_btn_playload = "Create " + item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1);
 
             string id_result = null;
-            string authtoken = null;
+            string authtoken;
 
             string auth_token_pattern = "type=\"hidden\" name=\"authenticity_token\" value=\"";
             string template_id_pattern = "data-method=\"delete\" href=\"/" + item_plural + "/";
@@ -141,7 +152,7 @@ namespace AltSpace_Unity_Uploader
                 if (tag_list != null)
                     form.Add(new StringContent(tag_list), item_singular + "[tag_list]");
 
-                form.Add(new StringContent("Create " + item_fn_cap), "\"commit\"");
+                form.Add(new StringContent(commit_btn_playload), "\"commit\"");
 
                 HttpResponseMessage result = LoginManager.GetHttpClient().PostAsync(item_plural, form).Result;
                 string content = result.Content.ReadAsStringAsync().Result;
@@ -246,6 +257,77 @@ namespace AltSpace_Unity_Uploader
             EditorUtility.ClearProgressBar();
         }
 
+        public static void BuildAndUploadAltVRItem(List<BuildTarget> targets, string item_type_singular, string itemRootName, string item_id)
+        {
+            string itemUploadDir = Common.CreateTempDirectory();
+
+            Task<HttpResponseMessage> uploadTask = null;
+            bool addScreenshots = true;
+
+            foreach (BuildTarget target in targets)
+            {
+                if (uploadTask != null)
+                {
+                    HttpResponseMessage result = uploadTask.Result;
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        Debug.LogWarning("Error during " + item_type_singular + " upload:" + result.StatusCode);
+                        Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
+
+                        uploadTask = null;
+                        break;
+                    }
+                }
+
+                uploadTask = null;
+
+                string itemUploadFile = Path.Combine(itemUploadDir, item_type_singular + "Upload");
+                if (target == BuildTarget.StandaloneOSX)
+                    itemUploadFile += "_Mac.zip";
+                else if (target == BuildTarget.Android)
+                    itemUploadFile += "_Android.zip";
+                else
+                    itemUploadFile += ".zip";
+
+                List<BuildTarget> singleTarget = new List<BuildTarget>();
+                singleTarget.Add(target);
+
+                if (item_type_singular == "kit")
+                    KitBuilder.BuildKitAssetBundle(singleTarget, addScreenshots, itemUploadFile);
+                else if (item_type_singular == "space_template")
+                    TemplateBuilder.BuildTemplateAssetBundle(singleTarget, itemUploadFile);
+                else
+                    throw new InvalidDataException(item_type_singular + ": Not recognized AltVR item type");
+
+                MultipartFormDataContent form = new MultipartFormDataContent();
+                ByteArrayContent zipContents = new ByteArrayContent(File.ReadAllBytes(itemUploadFile));
+
+                // Explicitly set content type
+                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+
+                form.Add(zipContents, item_type_singular + "[zip]", itemRootName + ".zip");
+                form.Add(new StringContent("" + Common.usingUnityVersion), item_type_singular + "[game_engine_version]");
+
+                uploadTask =
+                    LoginManager.GetHttpClient().PutAsync("/api/" + item_type_singular + "s/" + item_id + ".json", form);
+
+                addScreenshots = false;
+            }
+
+            // And wait for the final upload to be finished.
+            if (uploadTask != null)
+            {
+                HttpResponseMessage result = uploadTask.Result;
+                if (!result.IsSuccessStatusCode)
+                {
+                    Debug.LogWarning("Error during " + item_type_singular + " upload:" + result.StatusCode);
+                    Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
+                }
+            }
+
+            Directory.Delete(itemUploadDir, true);
+        }
+
         [MenuItem("AUU/Manage Login", false, 0)]
         public static void ShowLogInWindow()
         {
@@ -309,15 +391,17 @@ namespace AltSpace_Unity_Uploader
             switch(m_selectedTab)
             {
                 case 0: // Kits
-                    OnlineKitManager.ManageKits(this);
+                    OnlineKitManager.ManageKits();
                     break;
                 case 1: // Templates
-                    OnlineTemplateManager.ManageTemplates(this);
+                    OnlineTemplateManager.ManageTemplates();
                     break;
                 default:
                     break;
             }
 
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.LabelField("Altspace Unity Uploader 0.1.0", EditorStyles.centeredGreyMiniLabel);
             GUILayout.EndVertical();
 
         }

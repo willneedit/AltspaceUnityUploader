@@ -67,11 +67,41 @@ namespace AltSpace_Unity_Uploader
             if(SettingsManager.settings.TmplSetLightLayer)
             {
                 foreach(Light light in env.GetComponentsInChildren<Light>())
-                {
-                    light.lightmapBakeType = LightmapBakeType.Realtime;
                     light.cullingMask |= 1 << 15;
+            }
+
+            if(SettingsManager.settings.TmplFixEnviroLight)
+            {
+                if(RenderSettings.ambientMode != UnityEngine.Rendering.AmbientMode.Trilight)
+                {
+                    // If it's flat lighting, derive the Trilight from the single one
+                    if(RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Flat)
+                    {
+                        RenderSettings.ambientSkyColor = RenderSettings.ambientLight;
+                        RenderSettings.ambientEquatorColor = RenderSettings.ambientSkyColor;
+                        RenderSettings.ambientGroundColor = RenderSettings.ambientSkyColor;
+                    }
+                    else
+                    {
+                        RenderSettings.ambientSkyColor = Color.gray;
+                        RenderSettings.ambientEquatorColor = Color.gray;
+                        RenderSettings.ambientGroundColor = Color.gray;
+                        Debug.LogWarning("Cannot determine Environment Lighting color - please check, and use 'Gradient' to set\nUsing Gray as default.");
+                    }
+
+                    RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
                 }
             }
+
+            bool noDirectional = true;
+            foreach(Light light in env.GetComponentsInChildren<Light>())
+            {
+                if (light.type == LightType.Directional && light.lightmapBakeType == LightmapBakeType.Realtime)
+                    noDirectional = false;
+            }
+
+            if (noDirectional)
+                Debug.LogWarning("There's no Realtime directional light. Altspace will add a default white light.");
 
             EditorSceneManager.SaveScene(sc);
 

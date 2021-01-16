@@ -83,7 +83,7 @@ namespace AltSpace_Unity_Uploader
 
         private string CreateKit(string name, string description, string imageFileName)
         {
-            string result = LoginManager.CreateAltVRItem("kit", "kit", name, description, imageFileName);
+            string result = LoginManager.CreateAltVRItem("kit", name, description, imageFileName);
             ShowNotification(new GUIContent(
                 "Kit registration " + ((result != null)
                 ? "successful"
@@ -128,7 +128,7 @@ namespace AltSpace_Unity_Uploader
 
         }
 
-        public static void ManageKits(EditorWindow parent)
+        public static void ManageKits()
         {
             if (LoginManager.IsConnected)
             {
@@ -199,18 +199,12 @@ namespace AltSpace_Unity_Uploader
             else if(existsKitRoot)
             {
                 if (GUILayout.Button("Build"))
-                {
-                    BuildKit();
-                    parent.ShowNotification(new GUIContent("Kit creation finished"), 5.0f);
-                }
+                    EditorApplication.update += BuildKit;
 
                 if (HasKitSelected)
                 {
                     if (GUILayout.Button("Build & Upload"))
-                    {
-                        BuildAndUploadKit();
-                        parent.ShowNotification(new GUIContent("Kit upload finished"), 5.0f);
-                    }
+                        EditorApplication.update += BuildAndUploadKit;
                 }
 
             }
@@ -221,78 +215,33 @@ namespace AltSpace_Unity_Uploader
 
         private static void BuildKit()
         {
+            EditorApplication.update -= BuildKit;
             KitBuilder.BuildKitAssetBundle(SettingsManager.SelectedBuildTargets, true);
+            LoginManager window = GetWindow<LoginManager>();
+            window.ShowNotification(new GUIContent("Kit creation finished"), 5.0f);
+
         }
 
         private static void BuildAndUploadKit()
         {
+            EditorApplication.update -= BuildAndUploadKit;
+
             List<BuildTarget> targets = SettingsManager.SelectedBuildTargets;
+            string item_type_singular = "kit";
+            string itemRootName = Path.GetFileName(kitRoot.ToLower());
+            string item_id = _selected_kit.kit_data.kit_id;
 
-            string kitUploadDir = Common.CreateTempDirectory();
-
-            Task<HttpResponseMessage> uploadTask = null;
-            bool addScreenshots = true;
-
-            foreach (BuildTarget target in targets)
-            {
-                if (uploadTask != null)
-                {
-                    HttpResponseMessage result = uploadTask.Result;
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        Debug.LogWarning("Error during kit upload:" + result.StatusCode);
-                        Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
-
-                        // Continue with other architectures even if one failed.
-                        // break;
-                    }
-                }
-
-                uploadTask = null;
-
-                string kitUploadFile = Path.Combine(kitUploadDir, "kitUpload");
-                if (target == BuildTarget.StandaloneOSX)
-                    kitUploadFile += "_Mac.zip";
-                else if (target == BuildTarget.Android)
-                    kitUploadFile += "_Android.zip";
-                else
-                    kitUploadFile += ".zip";
-
-                List<BuildTarget> singleTarget = new List<BuildTarget>();
-                singleTarget.Add(target);
-
-                KitBuilder.BuildKitAssetBundle(singleTarget, addScreenshots, kitUploadFile);
-
-                MultipartFormDataContent form = new MultipartFormDataContent();
-                ByteArrayContent zipContents = new ByteArrayContent(File.ReadAllBytes(kitUploadFile));
-
-                // Explicitly set content type
-                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
-
-                form.Add(zipContents, "kit[zip]", Path.GetFileName(OnlineKitManager.kitRoot.ToLower()) + ".zip");
-                form.Add(new StringContent("" + Common.usingUnityVersion), "kit[game_engine_version]");
-
-                uploadTask =
-                    LoginManager.GetHttpClient().PutAsync("/api/kits/" + _selected_kit.kit_data.kit_id + ".json", form);
-
-                addScreenshots = false;
-            }
-
-            // And wait for the final upload to be finished.
-            if (uploadTask != null)
-            {
-                HttpResponseMessage result = uploadTask.Result;
-                if (!result.IsSuccessStatusCode)
-                    Debug.LogWarning("Error during kit upload:" + result.StatusCode);
-            }
-
-            Directory.Delete(kitUploadDir, true);
+            LoginManager.BuildAndUploadAltVRItem(targets, item_type_singular, itemRootName, item_id);
 
             // Reload kit data (and update display)
-            LoadSingleKit(_selected_kit.kit_data.kit_id);
-            _selected_kit = _known_kits[_selected_kit.kit_data.kit_id];
+            LoadSingleKit(item_id);
+            _selected_kit = _known_kits[item_id];
+
+            LoginManager window = GetWindow<LoginManager>();
+            window.ShowNotification(new GUIContent("Kit upload finished"), 5.0f);
 
         }
+
 
         public static void ShowKitSelection()
         {

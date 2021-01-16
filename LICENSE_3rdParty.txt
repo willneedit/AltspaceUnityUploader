@@ -1,0 +1,6 @@
+This software contains third party modules which are expressly licensed under different terms and conditions, as stated in it's respective files.
+
+ * DotNetZip, distributed under the Microsoft Public License (MS-PL), see https://github.com/haf/DotNetZip.Semverd
+ 
+ * MRE Shaders, (c) 2016 Unity Technologies and Microsoft, both distributed under the MIT license
+ 

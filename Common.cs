@@ -4,6 +4,7 @@ using Ionic.Zip;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -323,6 +324,38 @@ namespace AltSpace_Unity_Uploader
             return targetFileName;
         }
 
+        public static Dictionary<BuildTarget, bool> supported_cache = new Dictionary<BuildTarget, bool>();
+
+        /// <summary>
+        /// Checks if build support for the given platform is loaded
+        /// </summary>
+        /// <param name="target">The target platform</param>
+        /// <returns>true if build support is present</returns>
+        public static bool IsBuildTargetSupported(BuildTarget target)
+        {
+            bool res;
+            if (!supported_cache.TryGetValue(target, out res))
+            {
+                Type moduleManager = Type.GetType("UnityEditor.Modules.ModuleManager,UnityEditor.dll");
+
+                MethodInfo getTargetStringFromBuildTarget = moduleManager.GetMethod(
+                    "GetTargetStringFromBuildTarget",
+                    BindingFlags.Static | BindingFlags.NonPublic);
+                MethodInfo isPlatformSupportLoaded = moduleManager.GetMethod(
+                    "IsPlatformSupportLoaded",
+                    BindingFlags.Static | BindingFlags.NonPublic);
+
+                string targetString = (string)getTargetStringFromBuildTarget.Invoke(null, new object[] { target });
+                res = (bool)isPlatformSupportLoaded.Invoke(null, new object[] { targetString });
+
+                supported_cache[target] = res;
+
+                if (!res)
+                    Debug.LogWarning("Build Support '" + targetString + "' is not installed, building for this platform will be disabled.");
+            }
+
+            return res;
+        }
     }
 
 }

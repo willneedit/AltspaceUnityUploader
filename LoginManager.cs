@@ -401,7 +401,7 @@ namespace AltSpace_Unity_Uploader
             }
 
             GUILayout.FlexibleSpace();
-            EditorGUILayout.LabelField("Altspace Unity Uploader 0.1.0", EditorStyles.centeredGreyMiniLabel);
+            EditorGUILayout.LabelField("Altspace Unity Uploader 0.1.1", EditorStyles.centeredGreyMiniLabel);
             GUILayout.EndVertical();
 
         }

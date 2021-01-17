@@ -58,6 +58,13 @@ namespace AltSpace_Unity_Uploader
                 if (_settings == null)
                     _settings = new Settings();
 
+                if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneWindows))
+                    _settings.BuildForPC = false;
+                if (!Common.IsBuildTargetSupported(BuildTarget.Android))
+                    _settings.BuildForAndroid = false;
+                if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
+                    _settings.BuildForMac = false;
+
                 return _settings;
             }
 
@@ -242,9 +249,26 @@ namespace AltSpace_Unity_Uploader
 
                 EditorGUILayout.Space(10);
 
-                _settings.BuildForPC = EditorGUILayout.Toggle(new GUIContent("Build for PC"), _settings.BuildForPC);
-                _settings.BuildForAndroid = EditorGUILayout.Toggle(new GUIContent("Build for Android"), _settings.BuildForAndroid);
-                _settings.BuildForMac = EditorGUILayout.Toggle(new GUIContent("Build for macOS"), _settings.BuildForMac);
+                if (Common.IsBuildTargetSupported(BuildTarget.StandaloneWindows))
+                    _settings.BuildForPC = EditorGUILayout.Toggle(new GUIContent("Build for PC"), _settings.BuildForPC);
+                else
+                    EditorGUILayout.LabelField(new GUIContent(
+                        "Build for PC disabled",
+                        "Building for PC is disabled, you need to install the correct module using Unity Hub."));
+
+                if (Common.IsBuildTargetSupported(BuildTarget.Android))
+                    _settings.BuildForAndroid = EditorGUILayout.Toggle(new GUIContent("Build for Android"), _settings.BuildForAndroid);
+                else
+                    EditorGUILayout.LabelField(new GUIContent(
+                        "Build for Android disabled",
+                        "Building for Android is disabled, you need to install the correct module using Unity Hub."));
+
+                if (Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
+                    _settings.BuildForMac = EditorGUILayout.Toggle(new GUIContent("Build for macOS"), _settings.BuildForMac);
+                else
+                    EditorGUILayout.LabelField(new GUIContent(
+                        "Build for macOS disabled",
+                        "Building for macOS is disabled, you need to install the correct module using Unity Hub."));
 
                 EditorGUILayout.Space(10);
 

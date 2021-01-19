@@ -19,6 +19,8 @@ namespace AltSpace_Unity_Uploader
         public bool BuildForPC = true;
         public bool BuildForAndroid = true;
         public bool BuildForMac = true;
+        public int SelectShader = 0;
+        public bool DefaultShaderOnly = true;
         public bool CheckBuildEnv = true;
 
         public string KitsRootDirectory = "Assets/Prefabs";
@@ -29,7 +31,6 @@ namespace AltSpace_Unity_Uploader
         public bool KitsNormalizeScale = false;
         public bool KitsRemoveWhenGenerated = true;
         public bool KitsGenerateScreenshot = true;
-        public int KitsSelectShader = 0;
 
         public bool TmplSetLayer = true;
         public bool TmplSetLightLayer = true;
@@ -57,13 +58,6 @@ namespace AltSpace_Unity_Uploader
 
                 if (_settings == null)
                     _settings = new Settings();
-
-                if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneWindows))
-                    _settings.BuildForPC = false;
-                if (!Common.IsBuildTargetSupported(BuildTarget.Android))
-                    _settings.BuildForAndroid = false;
-                if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
-                    _settings.BuildForMac = false;
 
                 return _settings;
             }
@@ -222,7 +216,7 @@ namespace AltSpace_Unity_Uploader
             if(Common.usingUnityVersion != Common.currentUnityVersion)
             {
                 Debug.LogWarning("Your Unity version is " + Application.unityVersion + ", which is different from a 2019.4 version.");
-                Debug.LogWarning("It is STRONGLY recommended to install 2019.4.12f1 and update this project to use it.");
+                Debug.LogWarning("It is STRONGLY recommended to install 2019.4.2f1 and update this project to use it.");
             }
 
             if (settings.CheckBuildEnv)
@@ -235,6 +229,15 @@ namespace AltSpace_Unity_Uploader
         public void OnGUI()
         {
             _ = settings;
+
+            if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneWindows))
+                _settings.BuildForPC = false;
+            if (!Common.IsBuildTargetSupported(BuildTarget.Android))
+                _settings.BuildForAndroid = false;
+            if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
+                _settings.BuildForMac = false;
+
+
 
             EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
 
@@ -269,6 +272,18 @@ namespace AltSpace_Unity_Uploader
                     EditorGUILayout.LabelField(new GUIContent(
                         "Build for macOS disabled",
                         "Building for macOS is disabled, you need to install the correct module using Unity Hub."));
+
+                EditorGUILayout.Space(10);
+
+                _settings.SelectShader = EditorGUILayout.Popup(new GUIContent(
+                    "Set shaders to...",
+                    "Set the shaders of the kit object to the given one"
+                    ), _settings.SelectShader, m_shaders);
+
+                _settings.DefaultShaderOnly = EditorGUILayout.Toggle(new GUIContent(
+                    "Default Shader only",
+                    "Change only the 'Standard' shader to the given one, leave others unaffected"
+                    ), _settings.DefaultShaderOnly);
 
                 EditorGUILayout.Space(10);
 
@@ -322,13 +337,6 @@ namespace AltSpace_Unity_Uploader
                     "Normalize Scale",
                     "Set scale to (1,1,1) before exporting"
                     ), _settings.KitsNormalizeScale);
-
-                EditorGUILayout.Space(10);
-
-                _settings.KitsSelectShader = EditorGUILayout.Popup(new GUIContent(
-                    "Set shaders to...",
-                    "Set the shaders of the kit object to the given one"
-                    ) ,_settings.KitsSelectShader, m_shaders);
 
                 EditorGUILayout.Space(10);
 

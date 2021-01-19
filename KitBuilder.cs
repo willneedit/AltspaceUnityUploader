@@ -62,7 +62,7 @@ namespace AltSpace_Unity_Uploader
 
         private static void RedoShaders(GameObject go)
         {
-            int shaderSel = SettingsManager.settings.KitsSelectShader;
+            int shaderSel = SettingsManager.settings.SelectShader;
 
             Shader sh = null;
 
@@ -76,8 +76,13 @@ namespace AltSpace_Unity_Uploader
 
             Renderer[] rs = go.GetComponentsInChildren<Renderer>();
 
+            Shader standard = Shader.Find("Standard");
+
             foreach (Renderer r in rs)
-                r.sharedMaterial.shader = sh;
+            {
+                if(r.sharedMaterial.shader == standard || !SettingsManager.settings.DefaultShaderOnly)
+                    r.sharedMaterial.shader = sh;
+            }
         }
 
         private static void NormalizeGO(GameObject go)

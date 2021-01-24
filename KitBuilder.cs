@@ -60,6 +60,13 @@ namespace AltSpace_Unity_Uploader
                 l.lightmapBakeType = LightmapBakeType.Realtime;
         }
 
+        public static void UnsetStatic(GameObject go)
+        {
+            go.isStatic = false;
+            for (int i = 0; i < go.transform.childCount; ++i)
+                UnsetStatic(go.transform.GetChild(i).gameObject);
+        }
+
         private static void RedoShaders(GameObject go)
         {
             int shaderSel = SettingsManager.settings.SelectShader;
@@ -193,6 +200,9 @@ namespace AltSpace_Unity_Uploader
             string rootname = Common.SanitizeFileName(model.name);
 
             GameObject kiRoot = new GameObject(rootname);
+
+            if (SettingsManager.settings.KitUnsetStatic)
+                UnsetStatic(model);
 
             model.transform.SetParent(kiRoot.transform);
             Transform modelTr = kiRoot.transform.GetChild(0);

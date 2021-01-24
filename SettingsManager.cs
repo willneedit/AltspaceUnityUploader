@@ -29,6 +29,7 @@ namespace AltSpace_Unity_Uploader
         public bool KitsNormalizePos = false;
         public bool KitsNormalizeRot = false;
         public bool KitsNormalizeScale = false;
+        public bool KitUnsetStatic = true;
         public bool KitsRemoveWhenGenerated = true;
         public bool KitsGenerateScreenshot = true;
 
@@ -36,6 +37,7 @@ namespace AltSpace_Unity_Uploader
         public bool TmplSetLightLayer = true;
         public bool TmplDeleteCameras = true;
         public bool TmplFixEnviroLight = true;
+        public bool TmplSetStatic = false;
 
     }
 
@@ -114,6 +116,7 @@ namespace AltSpace_Unity_Uploader
 
 
         private static UnityEditor.PackageManager.Requests.AddRequest addResponse;
+        private static UnityEditor.PackageManager.Requests.RemoveRequest delResponse;
         private static UnityEditor.PackageManager.Requests.ListRequest listResponse;
 
 #pragma warning disable
@@ -167,10 +170,22 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
+        private static void PackageDelResponse()
+        {
+            if(delResponse.IsCompleted)
+            {
+                EditorApplication.update -= PackageDelResponse;
+                Debug.LogWarning("Removed package " + delResponse.PackageIdOrName);
+                EditorApplication.update += CheckPackageInstall;
+            }
+        }
+
         private static void PackageListResponse()
         {
             bool oculusStandaloneInstalled = false;
             bool oculusAndroidInstalled = false;
+            bool unityxrmgmt = false;
+
             if (listResponse.IsCompleted)
             {
                 EditorApplication.update -= PackageListResponse;
@@ -181,6 +196,15 @@ namespace AltSpace_Unity_Uploader
                         oculusStandaloneInstalled = true;
                     else if (package.name == "com.unity.xr.oculus.android")
                         oculusAndroidInstalled = true;
+                    else if (package.name == "com.unity.xr.management")
+                        unityxrmgmt = true;
+                }
+
+                if (unityxrmgmt)
+                {
+                    delResponse = UnityEditor.PackageManager.Client.Remove("com.unity.xr.management");
+                    EditorApplication.update += PackageDelResponse;
+                    return;
                 }
 
                 if (!oculusStandaloneInstalled && (settings.BuildForPC || settings.BuildForMac))
@@ -275,18 +299,6 @@ namespace AltSpace_Unity_Uploader
 
                 EditorGUILayout.Space(10);
 
-                _settings.SelectShader = EditorGUILayout.Popup(new GUIContent(
-                    "Set shaders to...",
-                    "Set the shaders of the kit object to the given one"
-                    ), _settings.SelectShader, m_shaders);
-
-                _settings.DefaultShaderOnly = EditorGUILayout.Toggle(new GUIContent(
-                    "Default Shader only",
-                    "Change only the 'Standard' shader to the given one, leave others unaffected"
-                    ), _settings.DefaultShaderOnly);
-
-                EditorGUILayout.Space(10);
-
                 bool oldCheckBuildEnv = settings.CheckBuildEnv;
 
                 _settings.CheckBuildEnv = EditorGUILayout.Toggle(new GUIContent(
@@ -340,6 +352,23 @@ namespace AltSpace_Unity_Uploader
 
                 EditorGUILayout.Space(10);
 
+                _settings.SelectShader = EditorGUILayout.Popup(new GUIContent(
+                    "Set shaders to...",
+                    "Set the shaders of the kit object to the given one"
+                    ), _settings.SelectShader, m_shaders);
+
+                _settings.DefaultShaderOnly = EditorGUILayout.Toggle(new GUIContent(
+                    "Default Shader only",
+                    "Change only the 'Standard' shader to the given one, leave others unaffected"
+                    ), _settings.DefaultShaderOnly);
+
+                _settings.KitUnsetStatic = EditorGUILayout.Toggle(new GUIContent(
+                    "Unset 'static' on objects",
+                    "Removes the 'static' flag on objects."),
+                    _settings.KitUnsetStatic);
+
+                EditorGUILayout.Space(10);
+
                 _settings.KitsRemoveWhenGenerated = EditorGUILayout.Toggle(new GUIContent(
                     "Remove item after generation",
                     "Remove the GameObject from the scene after converting to the kit object"
@@ -372,7 +401,10 @@ namespace AltSpace_Unity_Uploader
                     "Set Environment Lighting to 'Gradient' and adapt colors if needed"),
                     _settings.TmplFixEnviroLight);
 
-
+                _settings.TmplSetStatic = EditorGUILayout.Toggle(new GUIContent(
+                    "Set 'static' on objects",
+                    "Set the 'static' flags on all objects, making them use baked lighting.\nUSE WITH CAUTION!"),
+                    _settings.TmplSetStatic);
             }
 
 

@@ -23,6 +23,13 @@ namespace AltSpace_Unity_Uploader
                 RelayerTree(go.transform.GetChild(i).gameObject);
         }
 
+        public static void SetStatic(GameObject go)
+        {
+            go.isStatic = true;
+            for (int i = 0; i < go.transform.childCount; ++i)
+                SetStatic(go.transform.GetChild(i).gameObject);
+        }
+
         public static string BuildTemplateScene()
         {
             Scene sc = EditorSceneManager.GetActiveScene();
@@ -55,6 +62,10 @@ namespace AltSpace_Unity_Uploader
             // Relayer "Environment" and everything below (which is everything else) to layer 14, if so wanted
             if (SettingsManager.settings.TmplSetLayer)
                 RelayerTree(env);
+
+            // Set everything to 'static', if so wanted
+            if (SettingsManager.settings.TmplSetStatic)
+                SetStatic(env);
 
             // Delete all cameras, if so wanted
             if(SettingsManager.settings.TmplDeleteCameras)

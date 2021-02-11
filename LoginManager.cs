@@ -347,6 +347,16 @@ namespace AltSpace_Unity_Uploader
 
         public void OnGUI()
         {
+            if (!SettingsManager.initialized)
+            {
+                EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
+                EditorGUILayout.Space(10);
+
+                EditorGUILayout.LabelField(new GUIContent("Initializing, please wait..."));
+                EditorGUILayout.EndVertical();
+                return;
+            }
+
             if (_login == null || _password == null)
                 RevertLoginData();
 

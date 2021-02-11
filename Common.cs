@@ -14,6 +14,8 @@ namespace AltSpace_Unity_Uploader
     {
         public static readonly int currentUnityVersion = 20194;
 
+        public static readonly string strictUnityVersion = "2019.4.2f1";
+
         private static int _usingUnityVersion = 0;
 
         public static int usingUnityVersion { get
@@ -268,8 +270,10 @@ namespace AltSpace_Unity_Uploader
             string tmpSaveLocation = Common.CreateTempDirectory();
             string screenshotsSave = Path.Combine(tmpSaveLocation, "Screenshots");
 
+            tgtRootName = SanitizeFileName(tgtRootName).ToLower();
+
             if (targetFileName == null)
-                targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, tgtRootName.ToLower() + ".zip"), false, true, "zip");
+                targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, tgtRootName + ".zip"), false, true, "zip");
 
             // Gather screenshots
             if (screenshotFiles.Length > 0)

@@ -78,7 +78,7 @@ namespace AltSpace_Unity_Uploader
             if(SettingsManager.settings.TmplSetLightLayer)
             {
                 foreach(Light light in env.GetComponentsInChildren<Light>())
-                    light.cullingMask |= 1 << 15;
+                    light.cullingMask |= (1 << 15) | (1 << 10);
             }
 
             if(SettingsManager.settings.TmplFixEnviroLight)
@@ -107,12 +107,12 @@ namespace AltSpace_Unity_Uploader
             bool noDirectional = true;
             foreach(Light light in env.GetComponentsInChildren<Light>())
             {
-                if (light.type == LightType.Directional && light.lightmapBakeType == LightmapBakeType.Realtime)
+                if (light.type == LightType.Directional)
                     noDirectional = false;
             }
 
             if (noDirectional)
-                Debug.LogWarning("There's no Realtime directional light. Altspace will add a default white light.");
+                Debug.LogWarning("There's no directional light. Altspace will add a default white light.");
 
             EditorSceneManager.SaveScene(sc);
 
@@ -127,8 +127,7 @@ namespace AltSpace_Unity_Uploader
                 tmpSceneAssetName
             };
             string[] screenshotFiles = new string[0];
-            string tgtRootName = OnlineTemplateManager.templateScene;
-
+            string tgtRootName = Common.SanitizeFileName(OnlineTemplateManager.templateScene).ToLower();
 
             targetFileName = Common.BuildAssetBundle(assetFiles, screenshotFiles, architectures, tgtRootName, targetFileName);
 

@@ -57,7 +57,10 @@ namespace AltSpace_Unity_Uploader
             Light[] ls = go.GetComponentsInChildren<Light>();
 
             foreach(Light l in ls)
+            {
                 l.lightmapBakeType = LightmapBakeType.Realtime;
+                l.cullingMask |= (1 << 15) | (1 << 10);
+            }
         }
 
         public static void UnsetStatic(GameObject go)
@@ -319,7 +322,7 @@ namespace AltSpace_Unity_Uploader
             // Gather assets and create asset bundle for the given architecture
             string[] assetFiles = Directory.GetFiles(OnlineKitManager.kitRoot);
             string[] screenshotFiles = includeScreenshots ? Directory.GetFiles(screenshotSrc) : new string[0];
-            string tgtRootName = Path.GetFileName(OnlineKitManager.kitRoot);
+            string tgtRootName = Common.SanitizeFileName(Path.GetFileName(OnlineKitManager.kitRoot)).ToLower();
 
             targetFileName = Common.BuildAssetBundle(assetFiles, screenshotFiles, architectures, tgtRootName, targetFileName);
         }

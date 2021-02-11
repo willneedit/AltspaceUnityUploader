@@ -41,13 +41,56 @@ namespace AltSpace_Unity_Uploader
 
     }
 
+    public struct LayerInfo
+    {
+        public LayerInfo(int _layer, string _name)
+        {
+            layer = _layer;
+            name = _name;
+        }
+
+        public int layer;
+        public string name;
+    }
+
     [InitializeOnLoad]
     [ExecuteInEditMode]
     public class SettingsManager : EditorWindow
     {
+        private static LayerInfo[] layers =
+        {
+            // 1 - 8 are predefined by Unity.
+            // new LayerInfo(1, "Default" ),
+            // new LayerInfo(5, "UI" ),
+            new LayerInfo(10, "OwnAvatarLight" ),
+            new LayerInfo(14, "NavMesh"),
+            new LayerInfo(15, "AvatarLight"),
+            new LayerInfo(20, "Hologram"),
+            new LayerInfo(25, "MRE Default"),
+            new LayerInfo(31, "Interactables")
+        };
+
+        private static string[] m_tabs =
+        {
+            "General",
+            "Kits",
+            "Templates"
+        };
+
+        private static string[] m_shaders =
+        {
+            "No change",
+            "MRE Diffuse Vertex",
+            "MRE Unlit"
+        };
+
+
         private static string _settingsPath = "Assets/AUU_Settings.json";
 
         private static Settings _settings = null;
+
+        public static bool initialized = false;
+
         public static Settings settings {
             get
             {
@@ -100,21 +143,6 @@ namespace AltSpace_Unity_Uploader
 
         private int m_selectedTab = 0;
 
-        private string[] m_tabs =
-        {
-            "General",
-            "Kits",
-            "Templates"
-        };
-
-        private string[] m_shaders =
-        {
-            "No change",
-            "MRE Diffuse Vertex",
-            "MRE Unlit"
-        };
-
-
         private static UnityEditor.PackageManager.Requests.AddRequest addResponse;
         private static UnityEditor.PackageManager.Requests.RemoveRequest delResponse;
         private static UnityEditor.PackageManager.Requests.ListRequest listResponse;
@@ -151,11 +179,11 @@ namespace AltSpace_Unity_Uploader
             SerializedObject tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
             SerializedProperty layersProp = tagManager.FindProperty("layers");
 
-            SerializedProperty l14 = layersProp.GetArrayElementAtIndex(14);
-            if (l14 != null) l14.stringValue = "Nav Mesh";
-
-            SerializedProperty l15 = layersProp.GetArrayElementAtIndex(15);
-            if (l15 != null) l15.stringValue = "Avatar 15";
+            foreach(LayerInfo li in layers)
+            {
+                SerializedProperty lp = layersProp.GetArrayElementAtIndex(li.layer);
+                if (lp != null) lp.stringValue = li.name;
+            }
 
             tagManager.ApplyModifiedProperties();
         }
@@ -224,6 +252,8 @@ namespace AltSpace_Unity_Uploader
                 CheckXRSettings();
                 CheckLayerSettings();
                 Debug.Log("Player Settings adjusted for AltspaceVR build, we're good to go.");
+                initialized = true;
+                GetWindow<LoginManager>().Repaint();
             }
         }
 
@@ -237,10 +267,16 @@ namespace AltSpace_Unity_Uploader
 
         static SettingsManager()
         {
+            initialized = false;
+
             if(Common.usingUnityVersion != Common.currentUnityVersion)
             {
                 Debug.LogWarning("Your Unity version is " + Application.unityVersion + ", which is different from a 2019.4 version.");
                 Debug.LogWarning("It is STRONGLY recommended to install 2019.4.2f1 and update this project to use it.");
+            }
+            else if(Application.unityVersion != Common.strictUnityVersion)
+            {
+                Debug.LogWarning("Current recommendation is to use Unity " + Common.strictUnityVersion + ".\nOther builds, like your " + Application.unityVersion + " may or may not work.");
             }
 
             if (settings.CheckBuildEnv)
@@ -248,6 +284,8 @@ namespace AltSpace_Unity_Uploader
                 Debug.Log("Checking build settings...");
                 EditorApplication.update += CheckPackageInstall;
             }
+            else
+                initialized = true;
         }
 
         public void OnGUI()
@@ -261,14 +299,22 @@ namespace AltSpace_Unity_Uploader
             if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
                 _settings.BuildForMac = false;
 
+            if(!initialized)
+            {
+                EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
+                EditorGUILayout.Space(10);
 
+                EditorGUILayout.LabelField(new GUIContent("Initializing, please wait..."));
+                EditorGUILayout.EndVertical();
+                return;
+            }
 
             EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
 
             m_selectedTab = GUILayout.Toolbar(m_selectedTab, m_tabs);
 
             EditorGUILayout.Space(20);
-
+            
             if (m_tabs[m_selectedTab] == "General")
             {
                 _settings.Login = EditorGUILayout.TextField(new GUIContent("EMail", "The EMail you've registered yourself to Altspace with."), _settings.Login);

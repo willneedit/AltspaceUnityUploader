@@ -315,7 +315,7 @@ namespace AltSpace_Unity_Uploader
             EditorUtility.ClearProgressBar();
         }
 
-        public static void BuildKitAssetBundle(List<BuildTarget> architectures, bool includeScreenshots, string targetFileName = null)
+        public static bool BuildKitAssetBundle(List<BuildTarget> architectures, bool includeScreenshots, string targetFileName = null)
         {
             string screenshotSrc = Path.Combine(OnlineKitManager.kitRoot, "Screenshots");
 
@@ -325,6 +325,7 @@ namespace AltSpace_Unity_Uploader
             string tgtRootName = Common.SanitizeFileName(Path.GetFileName(OnlineKitManager.kitRoot)).ToLower();
 
             targetFileName = Common.BuildAssetBundle(assetFiles, screenshotFiles, architectures, tgtRootName, targetFileName);
+            return targetFileName != null;
         }
 
     }

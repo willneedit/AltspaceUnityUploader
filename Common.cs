@@ -275,6 +275,12 @@ namespace AltSpace_Unity_Uploader
             if (targetFileName == null)
                 targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, tgtRootName + ".zip"), false, true, "zip");
 
+            if(string.IsNullOrEmpty(targetFileName))
+            {
+                Debug.Log("Build has been canceled.");
+                return null;
+            }
+
             // Gather screenshots
             if (screenshotFiles.Length > 0)
             {

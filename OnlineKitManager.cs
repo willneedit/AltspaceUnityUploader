@@ -216,9 +216,9 @@ namespace AltSpace_Unity_Uploader
         private static void BuildKit()
         {
             EditorApplication.update -= BuildKit;
-            KitBuilder.BuildKitAssetBundle(SettingsManager.SelectedBuildTargets, true);
+            string state = KitBuilder.BuildKitAssetBundle(SettingsManager.SelectedBuildTargets, true) ? "finished" : "canceled";
             LoginManager window = GetWindow<LoginManager>();
-            window.ShowNotification(new GUIContent("Kit creation finished"), 5.0f);
+            window.ShowNotification(new GUIContent("Kit creation " + state), 5.0f);
 
         }
 

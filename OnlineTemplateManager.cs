@@ -254,9 +254,9 @@ namespace AltSpace_Unity_Uploader
         private static void BuildTemplate()
         {
             EditorApplication.update -= BuildTemplate;
-            TemplateBuilder.BuildTemplateAssetBundle(SettingsManager.SelectedBuildTargets);
+            string state = TemplateBuilder.BuildTemplateAssetBundle(SettingsManager.SelectedBuildTargets) ? "finished" : "canceled";
             LoginManager window = GetWindow<LoginManager>();
-            window.ShowNotification(new GUIContent("Template build finished"), 5.0f);
+            window.ShowNotification(new GUIContent("Template build " + state), 5.0f);
         }
 
         private static void BuildAndUploadTemplate()

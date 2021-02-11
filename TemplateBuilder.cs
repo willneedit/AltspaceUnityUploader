@@ -119,7 +119,7 @@ namespace AltSpace_Unity_Uploader
             return tmpSceneName;
         }
 
-        public static void BuildTemplateAssetBundle(List<BuildTarget> architectures, string targetFileName = null)
+        public static bool BuildTemplateAssetBundle(List<BuildTarget> architectures, string targetFileName = null)
         {
             string tmpSceneAssetName = BuildTemplateScene();
 
@@ -135,6 +135,8 @@ namespace AltSpace_Unity_Uploader
             File.Delete(tmpSceneAssetName + ".meta");
             File.Delete(tmpSceneAssetName);
             AssetDatabase.Refresh();
+
+            return targetFileName != null;
         }
     }
 

@@ -18,6 +18,8 @@ namespace AltSpace_Unity_Uploader
     [ExecuteInEditMode]
     public class LoginManager : EditorWindow
     {
+        public static readonly string versionString = "0.3.0";
+
         private static string _login = null;
         private static string _password = null;
         private static userEntryJSON _userEntry = null;
@@ -411,7 +413,7 @@ namespace AltSpace_Unity_Uploader
             }
 
             GUILayout.FlexibleSpace();
-            EditorGUILayout.LabelField("Altspace Unity Uploader 0.2.0", EditorStyles.centeredGreyMiniLabel);
+            EditorGUILayout.LabelField("Altspace Unity Uploader " + versionString, EditorStyles.centeredGreyMiniLabel);
             GUILayout.EndVertical();
 
         }

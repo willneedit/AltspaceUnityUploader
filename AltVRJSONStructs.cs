@@ -101,6 +101,7 @@ namespace AltSpace_Unity_Uploader
         public string description = null;
         public string space_template_id = null;     // ID used in URLs
         public List<assetBundleSceneJSON> asset_bundle_scenes = new List<assetBundleSceneJSON>(); // asset Bundles coined to different users? Strange.
+        public string name = null;                  // friendly name (again)
     }
 
     /// <summary>

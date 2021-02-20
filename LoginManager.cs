@@ -81,14 +81,15 @@ namespace AltSpace_Unity_Uploader
         /// <summary>
         /// Create an item in AltspaceVR.
         /// </summary>
+        /// <param name="id">ID of an existing item, null for a new one</param>
         /// <param name="item_singular">'space_template' or 'kit'</param>
         /// <param name="name">Name of item to create</param>
         /// <param name="description">The description</param>
         /// <param name="imageFileName">(Optional) Local file name of the image</param>
-        /// <param name="tag_list">(templates only) comma separated tag list</param>
         /// 
         /// <returns>The ID of the generated item</returns>
-        public static string CreateAltVRItem(string item_singular, string name, string description, string imageFileName, string tag_list = null)
+        /// <param name="tag_list">(templates only) comma separated tag list</param>
+        public static string ManageAltVRItem(string id, string item_singular, string name, string description, string imageFileName, string tag_list = null)
         {
             string item_fn = null;
 
@@ -100,7 +101,13 @@ namespace AltSpace_Unity_Uploader
                 throw new InvalidDataException(item_singular + ": Not a recognized Altspace item");
 
             string item_plural = item_singular + "s";
-            string commit_btn_playload = "Create " + item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1);
+            string progress_caption = (id == null)
+                ? "Creating " + item_fn
+                : "Updating " + item_fn;
+
+            string commit_btn_playload = (id == null)
+                ? "Create " + item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1)
+                : "Update";
 
             string id_result = null;
             string authtoken;
@@ -108,11 +115,15 @@ namespace AltSpace_Unity_Uploader
             string auth_token_pattern = "type=\"hidden\" name=\"authenticity_token\" value=\"";
             string template_id_pattern = "data-method=\"delete\" href=\"/" + item_plural + "/";
 
-            EditorUtility.DisplayProgressBar("Creating " + item_fn, "Retrieving landing page...", 0.0f);
+            EditorUtility.DisplayProgressBar(progress_caption, "Retrieving landing page...", 0.0f);
 
             try
             {
-                HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync(item_plural + "/new").Result;
+                string landing_uri = (id == null)
+                    ? item_plural + "/new"
+                    : item_plural + "/" + id + "/edit";
+
+                HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync(landing_uri).Result;
                 string content = result.Content.ReadAsStringAsync().Result;
                 result.EnsureSuccessStatusCode();
 
@@ -125,7 +136,7 @@ namespace AltSpace_Unity_Uploader
                 return null;
             }
 
-            EditorUtility.DisplayProgressBar("Creating " + item_fn + "", "Posting new " + item_fn + "...", 0.5f);
+            EditorUtility.DisplayProgressBar(progress_caption, "Posting new " + item_fn + "...", 0.5f);
 
             try
             {
@@ -259,12 +270,12 @@ namespace AltSpace_Unity_Uploader
             EditorUtility.ClearProgressBar();
         }
 
-        public static void BuildAndUploadAltVRItem(List<BuildTarget> targets, string item_type_singular, string itemRootName, string item_id)
+        public static void BuildAndUploadAltVRItem(List<BuildTarget> targets, AltspaceListItem item)
         {
             string itemUploadDir = Common.CreateTempDirectory();
 
             Task<HttpResponseMessage> uploadTask = null;
-            bool addScreenshots = true;
+            bool addScreenshots = (item.type == "kit");
 
             foreach (BuildTarget target in targets)
             {
@@ -273,7 +284,7 @@ namespace AltSpace_Unity_Uploader
                     HttpResponseMessage result = uploadTask.Result;
                     if (!result.IsSuccessStatusCode)
                     {
-                        Debug.LogWarning("Error during " + item_type_singular + " upload:" + result.StatusCode);
+                        Debug.LogWarning("Error during " + item.type + " upload:" + result.StatusCode);
                         Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
 
                         uploadTask = null;
@@ -283,7 +294,7 @@ namespace AltSpace_Unity_Uploader
 
                 uploadTask = null;
 
-                string itemUploadFile = Path.Combine(itemUploadDir, item_type_singular + "Upload");
+                string itemUploadFile = Path.Combine(itemUploadDir, item.type + "Upload");
                 if (target == BuildTarget.StandaloneOSX)
                     itemUploadFile += "_Mac.zip";
                 else if (target == BuildTarget.Android)
@@ -294,12 +305,7 @@ namespace AltSpace_Unity_Uploader
                 List<BuildTarget> singleTarget = new List<BuildTarget>();
                 singleTarget.Add(target);
 
-                if (item_type_singular == "kit")
-                    KitBuilder.BuildKitAssetBundle(singleTarget, addScreenshots, itemUploadFile);
-                else if (item_type_singular == "space_template")
-                    TemplateBuilder.BuildTemplateAssetBundle(singleTarget, itemUploadFile);
-                else
-                    throw new InvalidDataException(item_type_singular + ": Not recognized AltVR item type");
+                item.buildAssetBundle(singleTarget, addScreenshots, itemUploadFile);
 
                 MultipartFormDataContent form = new MultipartFormDataContent();
                 ByteArrayContent zipContents = new ByteArrayContent(File.ReadAllBytes(itemUploadFile));
@@ -307,11 +313,11 @@ namespace AltSpace_Unity_Uploader
                 // Explicitly set content type
                 zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
 
-                form.Add(zipContents, item_type_singular + "[zip]", itemRootName + ".zip");
-                form.Add(new StringContent("" + Common.usingUnityVersion), item_type_singular + "[game_engine_version]");
+                form.Add(zipContents, item.type + "[zip]", item.bundleName + ".zip");
+                form.Add(new StringContent("" + Common.usingUnityVersion), item.type + "[game_engine_version]");
 
                 uploadTask =
-                    LoginManager.GetHttpClient().PutAsync("/api/" + item_type_singular + "s/" + item_id + ".json", form);
+                    LoginManager.GetHttpClient().PutAsync("/api/" + item.type + "s/" + item.id + ".json", form);
 
                 addScreenshots = false;
             }
@@ -322,7 +328,7 @@ namespace AltSpace_Unity_Uploader
                 HttpResponseMessage result = uploadTask.Result;
                 if (!result.IsSuccessStatusCode)
                 {
-                    Debug.LogWarning("Error during " + item_type_singular + " upload:" + result.StatusCode);
+                    Debug.LogWarning("Error during " + item.type + " upload:" + result.StatusCode);
                     Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
                 }
             }

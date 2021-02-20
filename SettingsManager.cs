@@ -1,16 +1,55 @@
 ﻿#if UNITY_EDITOR
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using UnityEditor;
 using UnityEngine;
 
 namespace AltSpace_Unity_Uploader
 {
+    [Serializable]
+    public class JSONDictionaryEntry
+    {
+        public string Key = null;
+        public string Value = null;
+    }
+
+    [Serializable]
+    public class JSONDictionaryList
+    {
+        public List<JSONDictionaryEntry> jd = new List<JSONDictionaryEntry>();
+    }
+
+    [Serializable]
+    public class KnownItemsList
+    {
+        // Json implementation doesn't support dictionary entries, sorry.
+        public Dictionary<string, string> known_items = new Dictionary<string, string>();
+
+        // Return true if we enacted a change in the association list
+        public bool Update(string _type, string _id, string _itemPath)
+        {
+            string key = _id + "_" + _type;
+
+            string oldPath;
+            if (known_items.TryGetValue(key, out oldPath) && oldPath == _itemPath) return false;
+
+            known_items.Remove(key);
+            known_items[key] = _itemPath;
+
+            return true;
+        }
+
+        internal string Lookup(string _type, string _id)
+        {
+            string key = _id + "_" + _type;
+
+            string oldPath;
+            return (known_items.TryGetValue(key, out oldPath)) ? oldPath : null;
+        }
+    }
+
     [Serializable]
     public class Settings
     {
@@ -38,9 +77,8 @@ namespace AltSpace_Unity_Uploader
         public bool TmplDeleteCameras = true;
         public bool TmplFixEnviroLight = true;
         public bool TmplSetStatic = false;
-
     }
-
+    
     public struct LayerInfo
     {
         public LayerInfo(int _layer, string _name)
@@ -86,8 +124,10 @@ namespace AltSpace_Unity_Uploader
 
 
         private static string _settingsPath = "Assets/AUU_Settings.json";
+        private static string _kilistPath = "Assets/AUU_KnownItems.json";
 
         private static Settings _settings = null;
+        private static KnownItemsList _kilist = null;
 
         public static bool initialized = false;
 
@@ -115,6 +155,56 @@ namespace AltSpace_Unity_Uploader
                 File.WriteAllText(_settingsPath, text);
                 // File.Encrypt(_settingsPath);
             }
+        }
+
+        public static KnownItemsList knownItemsList
+        {
+            get
+            {
+                if(_kilist == null && File.Exists(_kilistPath))
+                {
+                    string json = File.ReadAllText(_kilistPath);
+                    JSONDictionaryList tmp = JsonUtility.FromJson<JSONDictionaryList>(json);
+                    _kilist = new KnownItemsList();
+                    foreach(JSONDictionaryEntry entry in tmp.jd)
+                        _kilist.known_items.Add(entry.Key, entry.Value);
+                }
+
+                if (_kilist == null)
+                    _kilist = new KnownItemsList();
+
+                return _kilist;
+            }
+
+            set
+            {
+                _kilist = value;
+                File.Delete(_kilistPath);
+                JSONDictionaryList tmp = new JSONDictionaryList();
+                foreach (KeyValuePair<string, string> entry in _kilist.known_items)
+                    tmp.jd.Add(new JSONDictionaryEntry()
+                    {
+                        Key = entry.Key,
+                        Value = entry.Value
+                    });
+
+                string text = JsonUtility.ToJson(tmp);
+                File.WriteAllText(_kilistPath, text);
+            }
+
+        }
+
+
+        public static void UpdateKnownItem(string _type, string _id, string _itemPath)
+        {
+            // Only write out if we actually did a change to the list
+            if(knownItemsList.Update(_type, _id, _itemPath))
+                knownItemsList = _kilist;
+        }
+
+        public static string LookupKnownItem(string _type, string _id)
+        {
+            return knownItemsList.Lookup(_type, _id);
         }
 
         public static List<BuildTarget> SelectedBuildTargets

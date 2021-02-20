@@ -233,6 +233,10 @@ namespace AltSpace_Unity_Uploader
                     if(new_item.updateAltVRItem() && LoadSingleKit(new_item.id))
                     {
                         _selected_kit = _known_kits[new_item.id];
+                        _selected_kit.itemPath = Path.Combine(
+                            SettingsManager.settings.KitsRootDirectory,
+                            Common.SanitizeFileName(_selected_kit.itemName));
+
                         this.Close();
                         GetWindow<LoginManager>().Repaint();
                     }

@@ -256,6 +256,11 @@ namespace AltSpace_Unity_Uploader
                     if (new_item.updateAltVRItem() && LoadSingleTemplate(new_item.id))
                     {
                         _selected_template = _known_templates[new_item.id];
+                        _selected_template.itemPath = Path.Combine(
+                            "Assets",
+                            "Scenes",
+                            Common.SanitizeFileName(_selected_template.itemName) + ".unity");
+
                         this.Close();
                         GetWindow<LoginManager>().Repaint();
                     }

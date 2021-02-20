@@ -36,7 +36,8 @@ namespace AltSpace_Unity_Uploader
             if (known_items.TryGetValue(key, out oldPath) && oldPath == _itemPath) return false;
 
             known_items.Remove(key);
-            known_items[key] = _itemPath;
+            if(_itemPath != null)
+                known_items[key] = _itemPath;
 
             return true;
         }

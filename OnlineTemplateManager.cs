@@ -19,8 +19,6 @@ namespace AltSpace_Unity_Uploader
         private static Dictionary<string, AltspaceTemplateItem> _known_templates = new Dictionary<string, AltspaceTemplateItem>();
         private static AltspaceTemplateItem _selected_template = new AltspaceTemplateItem();
         
-        public static bool HasLoadedTemplates { get { return _known_templates.Count > 0; } }
-
         public static void ShowSelectedTemplate()
         {
             if(LoginManager.IsConnected)
@@ -76,19 +74,6 @@ namespace AltSpace_Unity_Uploader
                 return true;
             }
             return false;
-        }
-
-        private void LoadTemplates()
-        {
-            LoginManager.LoadAltVRItems((templatesJSON content) =>
-            {
-                foreach (templateJSON tmpl in content.space_templates)
-                    EnterTemplateData(tmpl);
-            });
-
-            if (_known_templates.Count == 0)
-                ShowNotification(new GUIContent("No own kits"), 5.0f);
-
         }
 
         public static void ManageTemplates()
@@ -203,43 +188,16 @@ namespace AltSpace_Unity_Uploader
 
         public void OnGUI()
         {
-            GUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
+            AltVRItemSelector.BuildSelectorList(_known_templates.Values, CreateTemplate, LoadTemplates, SelectTemplate, ref m_scrollPosition);
 
-            if (HasLoadedTemplates)
+            void SelectTemplate(string id)
             {
-                m_scrollPosition = GUILayout.BeginScrollView(m_scrollPosition);
-                foreach (var tmpl in _known_templates)
-                {
-                    EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
-
-                    EditorGUILayout.LabelField(tmpl.Value.itemName);
-                    GUILayout.FlexibleSpace();
-                    if (GUILayout.Button("Select", EditorStyles.miniButton))
-                    {
-                        _selected_template = _known_templates[tmpl.Value.id];
-                        this.Close();
-                        GetWindow<LoginManager>().Repaint();
-                    }
-
-                    EditorGUILayout.EndHorizontal();
-                }
-
-                GUILayout.EndScrollView();
-            }
-            else
-            {
-                GUILayout.Label(
-                    "No templates loaded.\n" +
-                    "Either press \"Load templates\"\n" +
-                    "to load known templates from the account,\n" +
-                    "Or press \"Create New Template\"\n" +
-                    "to create a new one.", new GUIStyle() { fontStyle = FontStyle.Bold });
+                _selected_template = _known_templates[id];
+                this.Close();
+                GetWindow<LoginManager>().Repaint();
             }
 
-            if (GUILayout.Button("Load Templates"))
-                LoadTemplates();
-
-            if (GUILayout.Button("Create New Template"))
+            void CreateTemplate()
             {
                 CreateTemplateWindow window = CreateInstance<CreateTemplateWindow>();
                 window.ShowModalUtility();
@@ -265,8 +223,22 @@ namespace AltSpace_Unity_Uploader
                         GetWindow<LoginManager>().Repaint();
                     }
                 }
+
             }
-            GUILayout.EndVertical();
+
+            void LoadTemplates()
+            {
+                LoginManager.LoadAltVRItems((templatesJSON content) =>
+                {
+                    foreach (templateJSON tmpl in content.space_templates)
+                        EnterTemplateData(tmpl);
+                });
+
+                if (_known_templates.Count == 0)
+                    ShowNotification(new GUIContent("No own kits"), 5.0f);
+
+            }
+
         }
 
 

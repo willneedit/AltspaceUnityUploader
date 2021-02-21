@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -19,8 +20,6 @@ namespace AltSpace_Unity_Uploader
 
         private static Dictionary<string, AltspaceKitItem> _known_kits = new Dictionary<string, AltspaceKitItem>();
         private static AltspaceKitItem _selected_kit = new AltspaceKitItem();
-
-        public static bool HasLoadedKits => _known_kits.Count > 0;
 
         public static string kitRoot => _selected_kit.itemPath;
 
@@ -73,19 +72,6 @@ namespace AltSpace_Unity_Uploader
                 return true;
             }
             return false;
-        }
-
-        private void LoadKits()
-        {
-            LoginManager.LoadAltVRItems((kitsJSON content) =>
-            {
-                foreach (kitJSON kit in content.kits)
-                    EnterKitData(kit);
-            });
-
-            if(_known_kits.Count == 0)
-                ShowNotification(new GUIContent("No own kits"), 5.0f);
-
         }
 
         public static void ManageKits()
@@ -183,41 +169,17 @@ namespace AltSpace_Unity_Uploader
 
         public void OnGUI()
         {
-            GUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
 
-            if (HasLoadedKits)
+            AltVRItemSelector.BuildSelectorList(_known_kits.Values, CreateKit, LoadKits, SelectKit, ref m_scrollPosition);
+
+            void SelectKit(string id)
             {
-                m_scrollPosition = GUILayout.BeginScrollView(m_scrollPosition);
-                foreach (var kit in _known_kits)
-                {
-                    EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
-
-                    EditorGUILayout.LabelField(kit.Value.itemName);
-                    GUILayout.FlexibleSpace();
-                    if (GUILayout.Button("Select", EditorStyles.miniButton))
-                    {
-                        _selected_kit = _known_kits[kit.Value.id];
-                        this.Close();
-                        GetWindow<LoginManager>().Repaint();
-                    }
-
-                    EditorGUILayout.EndHorizontal();
-                }
-
-                GUILayout.EndScrollView();
-            }
-            else
-            {
-                GUILayout.Label(
-                    "No kits loaded. Either press \"Load kits\"\n" +
-                    "to load known kits from the account,\n" +
-                    "Or press \"Create New Kit\" to create a new one.", new GUIStyle() { fontStyle = FontStyle.Bold });
+                _selected_kit = _known_kits[id];
+                this.Close();
+                GetWindow<LoginManager>().Repaint();
             }
 
-            if (GUILayout.Button("Load Kits"))
-                LoadKits();
-
-            if (GUILayout.Button("Create New Kit"))
+            void CreateKit()
             {
                 CreateKitWindow window = CreateInstance<CreateKitWindow>();
                 window.ShowModalUtility();
@@ -230,7 +192,7 @@ namespace AltSpace_Unity_Uploader
                         imageFile = window.imageFile
                     };
 
-                    if(new_item.updateAltVRItem() && LoadSingleKit(new_item.id))
+                    if (new_item.updateAltVRItem() && LoadSingleKit(new_item.id))
                     {
                         _selected_kit = _known_kits[new_item.id];
                         _selected_kit.itemPath = Path.Combine(
@@ -242,7 +204,20 @@ namespace AltSpace_Unity_Uploader
                     }
                 }
             }
-            GUILayout.EndVertical();
+
+            void LoadKits()
+            {
+                LoginManager.LoadAltVRItems((kitsJSON content) =>
+                {
+                    foreach (kitJSON kit in content.kits)
+                        EnterKitData(kit);
+                });
+
+                if (_known_kits.Count == 0)
+                    ShowNotification(new GUIContent("No own kits"), 5.0f);
+
+            }
+
         }
 
     }

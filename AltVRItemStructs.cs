@@ -154,6 +154,12 @@ namespace AltSpace_Unity_Uploader
         {
             string screenshotSrc = Path.Combine(itemPath, "Screenshots");
 
+            if(includeScreenshots && !Directory.Exists(screenshotSrc))
+            {
+                Debug.LogWarning("The screenshot directory is missing - no screenshots will be uploaded.");
+                includeScreenshots = false;
+            }
+
             // Gather assets and create asset bundle for the given architecture
             string[] assetFiles = Directory.GetFiles(itemPath);
             string[] screenshotFiles = includeScreenshots ? Directory.GetFiles(screenshotSrc) : new string[0];

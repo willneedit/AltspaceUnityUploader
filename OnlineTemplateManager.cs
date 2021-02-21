@@ -18,20 +18,20 @@ namespace AltSpace_Unity_Uploader
     {
         private static Dictionary<string, AltspaceTemplateItem> _known_templates = new Dictionary<string, AltspaceTemplateItem>();
         private static AltspaceTemplateItem _selected_template = new AltspaceTemplateItem();
-        
-        public static void ShowSelectedTemplate()
+
+        public static void ShowTemplate(AltspaceTemplateItem tmpl)
         {
-            Common.ShowSelectedItem(_selected_template);
+            Common.ShowItem(tmpl);
 
             EditorGUILayout.BeginHorizontal();
 
-            _selected_template.itemPath = EditorGUILayout.TextField(_selected_template.itemPath);
+            tmpl.itemPath = EditorGUILayout.TextField(tmpl.itemPath);
             if (GUILayout.Button("Use current scene"))
-                _selected_template.chooseAssetPath();
+                tmpl.chooseAssetPath();
 
             EditorGUILayout.EndHorizontal();
 
-            if (_selected_template.isSet && !EditorSceneManager.GetSceneByName(_selected_template.templateSceneName).IsValid())
+            if (tmpl.isSet && !EditorSceneManager.GetSceneByName(tmpl.templateSceneName).IsValid())
             {
                 GUILayout.Label("The scene isn't loaded.", new GUIStyle()
                 {
@@ -39,7 +39,7 @@ namespace AltSpace_Unity_Uploader
                     alignment = TextAnchor.MiddleCenter
                 });
 
-                if (_selected_template.exists)
+                if (tmpl.exists)
                     GUILayout.Label("Yet, there is a scene saved under the given name\nPlease load it into the editor.", new GUIStyle()
                     {
                         fontStyle = FontStyle.Bold,
@@ -56,7 +56,7 @@ namespace AltSpace_Unity_Uploader
                     if (GUILayout.Button("Save current scene"))
                     {
                         Scene sc = EditorSceneManager.GetActiveScene();
-                        EditorSceneManager.SaveScene(sc, _selected_template.itemPath);
+                        EditorSceneManager.SaveScene(sc, tmpl.itemPath);
                     }
                 }
 
@@ -94,26 +94,13 @@ namespace AltSpace_Unity_Uploader
 
         public static void ManageTemplates()
         {
-            void UpdateGUICallback(string id)
-            {
-                LoadSingleTemplate(id);
-                _selected_template = _known_templates[id];
-            }
-
             AltVRItemWidgets.ManageItem(
                 _selected_template,
-                ShowTemplateSelection,
-                ShowSelectedTemplate,
-                UpdateGUICallback,
+                () => GetWindow<OnlineTemplateManager>().Show(),
+                (string id) => { LoadSingleTemplate(id); _selected_template = _known_templates[id]; },
                 "You need to set the scene name\nbefore you can build templates.");
         }
 
-
-        public static void ShowTemplateSelection()
-        {
-            OnlineTemplateManager window = GetWindow<OnlineTemplateManager>();
-            window.Show();
-        }
 
         private Vector2 m_scrollPosition;
 

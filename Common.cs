@@ -379,7 +379,7 @@ namespace AltSpace_Unity_Uploader
             return res;
         }
 
-        public static void ShowSelectedItem(AltspaceListItem item)
+        public static void ShowItem(AltspaceListItem item)
         {
             
             if (LoginManager.IsConnected)

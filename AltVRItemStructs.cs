@@ -113,6 +113,11 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         public abstract string pluralName { get; }          // "kits" or "templates"
 
+        /// <summary>
+        /// Describe yourself in the GUI, with all details
+        /// </summary>
+        public abstract void showSelf();
+
     }
 
     public class AltspaceKitItem : AltspaceListItem
@@ -170,6 +175,8 @@ namespace AltSpace_Unity_Uploader
             targetFileName = Common.BuildAssetBundle(assetFiles, screenshotFiles, architectures, tgtRootName, targetFileName);
             return targetFileName != null;
         }
+
+        public override void showSelf() => OnlineKitManager.ShowKit(this);
 
         public override string type => "kit";
 
@@ -243,6 +250,8 @@ namespace AltSpace_Unity_Uploader
 
             return targetFileName != null;
         }
+
+        public override void showSelf() => OnlineTemplateManager.ShowTemplate(this);
 
         public override string type => "space_template";
 

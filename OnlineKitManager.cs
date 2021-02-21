@@ -23,13 +23,13 @@ namespace AltSpace_Unity_Uploader
 
         public static string kitRoot => _selected_kit.itemPath;
 
-        public static void ShowSelectedKit()
+        public static void ShowKit(AltspaceKitItem kit)
         {
-            Common.ShowSelectedItem(_selected_kit);
+            Common.ShowItem(kit);
 
-            _selected_kit.itemPath = Common.FileSelectionField(new GUIContent("Kit Prefab Directory:"), true, false, _selected_kit.itemPath);
+            kit.itemPath = Common.FileSelectionField(new GUIContent("Kit Prefab Directory:"), true, false, kit.itemPath);
 
-            if (_selected_kit.isSet && !_selected_kit.exists)
+            if (kit.isSet && !kit.exists)
             {
                 GUILayout.Label("The directory doesn't exist.\nPress the button below to create it.", new GUIStyle()
                 {
@@ -38,7 +38,7 @@ namespace AltSpace_Unity_Uploader
                 });
                 if (GUILayout.Button("Create kit prefab directory"))
                 {
-                    _selected_kit.createAsset();
+                    kit.createAsset();
                     AssetDatabase.Refresh();
                 }
             }
@@ -76,24 +76,11 @@ namespace AltSpace_Unity_Uploader
 
         public static void ManageKits()
         {
-            void UpdateGUICallback(string id)
-            {
-                LoadSingleKit(id);
-                _selected_kit = _known_kits[id];
-            }
-
             AltVRItemWidgets.ManageItem(
                 _selected_kit,
-                ShowKitSelection,
-                ShowSelectedKit,
-                UpdateGUICallback,
+                () => GetWindow<OnlineKitManager>().Show(),
+                (string id) => { LoadSingleKit(id); _selected_kit = _known_kits[id]; },
                 "You need to set a directory before you can build kits.");
-        }
-
-        public static void ShowKitSelection()
-        {
-            OnlineKitManager window = GetWindow<OnlineKitManager>();
-            window.Show();
         }
 
         private Vector2 m_scrollPosition;

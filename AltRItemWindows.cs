@@ -156,7 +156,7 @@ namespace AltSpace_Unity_Uploader
             GUILayout.EndVertical();
         }
 
-        public static void ManageItem(AltspaceListItem item, Action showSelection_fn, Action showItem_fn, Action<string> updateItem_fn, string missingString)
+        public static void ManageItem(AltspaceListItem item, Action showSelection_fn, Action<string> updateItem_fn, string missingString)
         {
             void BuildItem(AltspaceListItem subItem)
             {
@@ -190,7 +190,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.Space(10);
 
-            showItem_fn();
+            item.showSelf();
 
             EditorGUILayout.BeginHorizontal();
 

@@ -25,23 +25,23 @@ namespace AltSpace_Unity_Uploader
 
         public static void ShowSelectedKit()
         {
-            if(LoginManager.IsConnected)
-            {
-                EditorGUILayout.LabelField("Selected Kit:");
-                Common.DisplayStatus("  Name:", "none", _selected_kit.itemName);
-                Common.DisplayStatus("  ID:", "none", _selected_kit.id);
-            }
-
-            if (_selected_kit.isSelected)
-            {
-                EditorGUILayout.Space(10);
-
-                EditorGUILayout.LabelField("Kit contents:");
-                Common.DescribeAssetBundles(_selected_kit.asset_bundles);
-
-            }
+            Common.ShowSelectedItem(_selected_kit);
 
             _selected_kit.itemPath = Common.FileSelectionField(new GUIContent("Kit Prefab Directory:"), true, false, _selected_kit.itemPath);
+
+            if (_selected_kit.isSet && !_selected_kit.exists)
+            {
+                GUILayout.Label("The directory doesn't exist.\nPress the button below to create it.", new GUIStyle()
+                {
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                });
+                if (GUILayout.Button("Create kit prefab directory"))
+                {
+                    _selected_kit.createAsset();
+                    AssetDatabase.Refresh();
+                }
+            }
         }
 
         public static void ResetContents()
@@ -76,88 +76,19 @@ namespace AltSpace_Unity_Uploader
 
         public static void ManageKits()
         {
-            if (LoginManager.IsConnected)
+            void UpdateGUICallback(string id)
             {
-                if (GUILayout.Button("Select Kit"))
-                    ShowKitSelection();
-            }
-            else
-                GUILayout.Label("Offline mode", new GUIStyle()
-                {
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                });
-
-            EditorGUILayout.Space(10);
-
-            ShowSelectedKit();
-
-            if(_selected_kit.isSet && !_selected_kit.exists)
-            {
-                GUILayout.Label("The directory doesn't exist.\nPress the button below to create it.", new GUIStyle()
-                {
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                });
-                if (GUILayout.Button("Create kit prefab directory"))
-                {
-                    _selected_kit.createAsset();
-                    AssetDatabase.Refresh();
-                }
+                LoadSingleKit(id);
+                _selected_kit = _known_kits[id];
             }
 
-
-            EditorGUILayout.BeginHorizontal();
-
-            if(!_selected_kit.isSet)
-                GUILayout.Label("You need to set a directory before you can build kits.", new GUIStyle()
-                {
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                });
-            else if(_selected_kit.exists)
-            {
-                if (GUILayout.Button("Build"))
-                    EditorApplication.update += BuildKit;
-
-                if (_selected_kit.isSelected)
-                {
-                    if (GUILayout.Button("Build & Upload"))
-                        EditorApplication.update += BuildAndUploadKit;
-                }
-
-            }
-
-
-            EditorGUILayout.EndHorizontal();
+            AltVRItemWidgets.ManageItem(
+                _selected_kit,
+                ShowKitSelection,
+                ShowSelectedKit,
+                UpdateGUICallback,
+                "You need to set a directory before you can build kits.");
         }
-
-        private static void BuildKit()
-        {
-            EditorApplication.update -= BuildKit;
-            string state = _selected_kit.buildAssetBundle(SettingsManager.SelectedBuildTargets, true) ? "finished" : "canceled";
-            LoginManager window = GetWindow<LoginManager>();
-            window.ShowNotification(new GUIContent("Kit creation " + state), 5.0f);
-
-        }
-
-        private static void BuildAndUploadKit()
-        {
-            EditorApplication.update -= BuildAndUploadKit;
-
-            string item_id = _selected_kit.id;
-
-            LoginManager.BuildAndUploadAltVRItem(SettingsManager.SelectedBuildTargets, _selected_kit);
-
-            // Reload kit data (and update display)
-            LoadSingleKit(item_id);
-            _selected_kit = _known_kits[item_id];
-
-            LoginManager window = GetWindow<LoginManager>();
-            window.ShowNotification(new GUIContent("Kit upload finished"), 5.0f);
-
-        }
-
 
         public static void ShowKitSelection()
         {
@@ -170,7 +101,7 @@ namespace AltSpace_Unity_Uploader
         public void OnGUI()
         {
 
-            AltVRItemSelector.BuildSelectorList(_known_kits.Values, CreateKit, LoadKits, SelectKit, ref m_scrollPosition);
+            AltVRItemWidgets.BuildSelectorList(_known_kits.Values, CreateKit, LoadKits, SelectKit, ref m_scrollPosition);
 
             void SelectKit(string id)
             {

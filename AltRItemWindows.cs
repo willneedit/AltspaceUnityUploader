@@ -106,7 +106,7 @@ namespace AltSpace_Unity_Uploader
         }
     }
 
-    public class AltVRItemSelector
+    public class AltVRItemWidgets
     {
         public static void BuildSelectorList<T>(Dictionary<string, T>.ValueCollection vals, Action create_fn, Action load_fn, Action<string> select_fn, ref Vector2 scrollPosition)
     where T : AltspaceListItem, new()
@@ -154,6 +154,66 @@ namespace AltSpace_Unity_Uploader
                 create_fn();
 
             GUILayout.EndVertical();
+        }
+
+        public static void ManageItem(AltspaceListItem item, Action showSelection_fn, Action showItem_fn, Action<string> updateItem_fn, string missingString)
+        {
+            void BuildItem(AltspaceListItem subItem)
+            {
+                string state = subItem.buildAssetBundle(SettingsManager.SelectedBuildTargets) ? "finished" : "canceled";
+                LoginManager window = EditorWindow.GetWindow<LoginManager>();
+                window.ShowNotification(new GUIContent(subItem.friendlyName.Capitalize() + " build " + state), 5.0f);
+            }
+
+            void BuildAndUploadItem(AltspaceListItem subItem, Action<string> updategui_fn)
+            {
+                LoginManager.BuildAndUploadAltVRItem(SettingsManager.SelectedBuildTargets, subItem);
+
+                updategui_fn(subItem.id);
+
+                LoginManager window = EditorWindow.GetWindow<LoginManager>();
+                window.ShowNotification(new GUIContent(subItem.friendlyName.Capitalize() + " upload finished"), 5.0f);
+
+            }
+
+            if (LoginManager.IsConnected)
+            {
+                if (GUILayout.Button("Select " + item.friendlyName.Capitalize()))
+                    showSelection_fn();
+            }
+            else
+                EditorGUILayout.LabelField("Offline mode", new GUIStyle()
+                {
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                });
+
+            EditorGUILayout.Space(10);
+
+            showItem_fn();
+
+            EditorGUILayout.BeginHorizontal();
+
+            if (!item.isSet)
+                GUILayout.Label(missingString, new GUIStyle()
+                {
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                });
+            else if (item.exists)
+            {
+                if (GUILayout.Button("Build"))
+                    EditorApplication.delayCall += () => BuildItem(item);
+
+                if (item.isSelected)
+                {
+                    if (GUILayout.Button("Build & Upload"))
+                        EditorApplication.delayCall += () => BuildAndUploadItem(item, updateItem_fn);
+                }
+
+            }
+
+            EditorGUILayout.EndHorizontal();
         }
 
     }

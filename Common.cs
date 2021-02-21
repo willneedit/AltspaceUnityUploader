@@ -10,6 +10,14 @@ using UnityEngine;
 
 namespace AltSpace_Unity_Uploader
 {
+    public static class Extensions
+    {
+        public static string Capitalize(this string str)
+        {
+            return str.Substring(0, 1).ToUpper() + str.Substring(1);
+        }
+    }
+
     public class Common
     {
         public static readonly int currentUnityVersion = 20194;
@@ -122,6 +130,10 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
+        /// <summary>
+        /// Give an overview over the given asset bundles
+        /// </summary>
+        /// <param name="bundles">bundles to list</param>
         public static void DescribeAssetBundles(List<assetBundleJSON> bundles)
         {
 
@@ -365,6 +377,26 @@ namespace AltSpace_Unity_Uploader
             }
 
             return res;
+        }
+
+        public static void ShowSelectedItem(AltspaceListItem item)
+        {
+            
+            if (LoginManager.IsConnected)
+            {
+                EditorGUILayout.LabelField("Selected " + item.friendlyName + ":");
+                DisplayStatus("  Name:", "none", item.itemName);
+                DisplayStatus("  ID:", "none", item.id);
+            }
+
+            if (item.isSelected)
+            {
+                EditorGUILayout.Space(10);
+
+                EditorGUILayout.LabelField(item.friendlyName.Capitalize() + " contents:");
+
+                DescribeAssetBundles(item.asset_bundles);
+            }
         }
     }
 

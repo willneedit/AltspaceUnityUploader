@@ -21,22 +21,7 @@ namespace AltSpace_Unity_Uploader
         
         public static void ShowSelectedTemplate()
         {
-            if(LoginManager.IsConnected)
-            {
-                EditorGUILayout.LabelField("Selected Template:");
-                Common.DisplayStatus("  Name:", "none", _selected_template.itemName);
-                Common.DisplayStatus("  ID:", "none", _selected_template.id);
-            }
-
-            if(_selected_template.isSelected)
-            {
-                EditorGUILayout.Space(10);
-
-                EditorGUILayout.LabelField("Template contents:");
-
-                // TODO: Any reason where there are more than one asset bundle scenes? 
-                Common.DescribeAssetBundles(_selected_template.asset_bundles);
-            }
+            Common.ShowSelectedItem(_selected_template);
 
             EditorGUILayout.BeginHorizontal();
 
@@ -45,6 +30,37 @@ namespace AltSpace_Unity_Uploader
                 _selected_template.chooseAssetPath();
 
             EditorGUILayout.EndHorizontal();
+
+            if (_selected_template.isSet && !EditorSceneManager.GetSceneByName(_selected_template.templateSceneName).IsValid())
+            {
+                GUILayout.Label("The scene isn't loaded.", new GUIStyle()
+                {
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                });
+
+                if (_selected_template.exists)
+                    GUILayout.Label("Yet, there is a scene saved under the given name\nPlease load it into the editor.", new GUIStyle()
+                    {
+                        fontStyle = FontStyle.Bold,
+                        alignment = TextAnchor.MiddleCenter
+                    });
+                else
+                {
+                    GUILayout.Label("Press the button to save the current scene under this name.", new GUIStyle()
+                    {
+                        fontStyle = FontStyle.Bold,
+                        alignment = TextAnchor.MiddleCenter
+                    });
+
+                    if (GUILayout.Button("Save current scene"))
+                    {
+                        Scene sc = EditorSceneManager.GetActiveScene();
+                        EditorSceneManager.SaveScene(sc, _selected_template.itemPath);
+                    }
+                }
+
+            }
         }
 
         public static void ResetContents()
@@ -78,103 +94,18 @@ namespace AltSpace_Unity_Uploader
 
         public static void ManageTemplates()
         {
-            if (LoginManager.IsConnected)
+            void UpdateGUICallback(string id)
             {
-                if (GUILayout.Button("Select Template"))
-                    ShowTemplateSelection();
-            }
-            else
-                EditorGUILayout.LabelField("Offline mode", new GUIStyle()
-                {
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                });
-
-            EditorGUILayout.Space(10);
-
-            ShowSelectedTemplate();
-
-            string template_id = _selected_template.id;
-
-
-            if(_selected_template.isSet && !EditorSceneManager.GetSceneByName(_selected_template.templateSceneName).IsValid())
-            {
-                GUILayout.Label("The scene isn't loaded.", new GUIStyle()
-                {
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                });
-
-                if (_selected_template.exists)
-                    GUILayout.Label("Yet, there is a scene saved under the given name\nPlease load it into the editor.", new GUIStyle()
-                    {
-                        fontStyle = FontStyle.Bold,
-                        alignment = TextAnchor.MiddleCenter
-                    });
-                else
-                {
-                    GUILayout.Label("Press the button to save the current scene under this name.", new GUIStyle()
-                    {
-                        fontStyle = FontStyle.Bold,
-                        alignment = TextAnchor.MiddleCenter
-                    });
-
-                    if (GUILayout.Button("Save current scene"))
-                    {
-                        Scene sc = EditorSceneManager.GetActiveScene();
-                        EditorSceneManager.SaveScene(sc, _selected_template.itemPath);
-                    }
-                }
-
+                LoadSingleTemplate(id);
+                _selected_template = _known_templates[id];
             }
 
-            EditorGUILayout.BeginHorizontal();
-
-            if (!_selected_template.isSet)
-                GUILayout.Label("You need to set the scene name\nbefore you can build templates.", new GUIStyle()
-                {
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                });
-            else if(_selected_template.exists)
-            {
-                if (GUILayout.Button("Build"))
-                    EditorApplication.update += BuildTemplate;
-
-                if (_selected_template.isSelected)
-                {
-                    if (GUILayout.Button("Build & Upload"))
-                        EditorApplication.update += BuildAndUploadTemplate;
-                }
-
-            }
-
-            EditorGUILayout.EndHorizontal();
-        }
-
-        private static void BuildTemplate()
-        {
-            EditorApplication.update -= BuildTemplate;
-            string state = _selected_template.buildAssetBundle(SettingsManager.SelectedBuildTargets) ? "finished" : "canceled";
-            LoginManager window = GetWindow<LoginManager>();
-            window.ShowNotification(new GUIContent("Template build " + state), 5.0f);
-        }
-
-        private static void BuildAndUploadTemplate()
-        {
-            EditorApplication.update -= BuildAndUploadTemplate;
-
-            string item_id = _selected_template.id;
-
-            LoginManager.BuildAndUploadAltVRItem(SettingsManager.SelectedBuildTargets, _selected_template);
-
-            // Reload kit data (and update display)
-            LoadSingleTemplate(item_id);
-            _selected_template = _known_templates[item_id];
-
-            LoginManager window = GetWindow<LoginManager>();
-            window.ShowNotification(new GUIContent("Template upload finished"), 5.0f);
-
+            AltVRItemWidgets.ManageItem(
+                _selected_template,
+                ShowTemplateSelection,
+                ShowSelectedTemplate,
+                UpdateGUICallback,
+                "You need to set the scene name\nbefore you can build templates.");
         }
 
 
@@ -188,7 +119,7 @@ namespace AltSpace_Unity_Uploader
 
         public void OnGUI()
         {
-            AltVRItemSelector.BuildSelectorList(_known_templates.Values, CreateTemplate, LoadTemplates, SelectTemplate, ref m_scrollPosition);
+            AltVRItemWidgets.BuildSelectorList(_known_templates.Values, CreateTemplate, LoadTemplates, SelectTemplate, ref m_scrollPosition);
 
             void SelectTemplate(string id)
             {
@@ -235,7 +166,7 @@ namespace AltSpace_Unity_Uploader
                 });
 
                 if (_known_templates.Count == 0)
-                    ShowNotification(new GUIContent("No own kits"), 5.0f);
+                    ShowNotification(new GUIContent("No own templates"), 5.0f);
 
             }
 

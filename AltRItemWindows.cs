@@ -108,6 +108,8 @@ namespace AltSpace_Unity_Uploader
 
     public class AltVRItemWidgets
     {
+        private static bool m_showWithAssets = false;
+
         public static void BuildSelectorList<T>(Dictionary<string, T>.ValueCollection vals, Action create_fn, Action load_fn, Action<string> select_fn, ref Vector2 scrollPosition)
     where T : AltspaceListItem, new()
         {
@@ -115,12 +117,24 @@ namespace AltSpace_Unity_Uploader
 
             GUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
 
-            if (vals.Count > 0)
+            EditorGUILayout.Space(10);
+
+            EditorGUILayout.BeginHorizontal(GUILayout.Width(240.0f));
+
+            m_showWithAssets = EditorGUILayout.Toggle(m_showWithAssets);
+            EditorGUILayout.LabelField("Show only items with local assets");
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(10);
+
+            bool shownOne = false;
+
             {
                 GUIStyle style = new GUIStyle() { fontStyle = FontStyle.Bold };
 
                 // We got at least one item, pick the type from one.
-                item_type = vals.First().friendlyName;
+                if(vals.Count > 0)
+                    item_type = vals.First().friendlyName;
 
                 scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
@@ -138,6 +152,9 @@ namespace AltSpace_Unity_Uploader
 
                 foreach (var item in vals)
                 {
+                    if (m_showWithAssets && !item.isSet)
+                        continue;
+
                     EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
 
                     EditorGUILayout.LabelField(item.itemName);
@@ -160,20 +177,30 @@ namespace AltSpace_Unity_Uploader
                         select_fn(item.id);
 
                     EditorGUILayout.EndHorizontal();
+
+                    shownOne = true;
                 }
 
                 GUILayout.EndScrollView();
             }
-            else
+
+            if(!shownOne)
             {
                 // We had no item to read the type from, create an empty "blueprint item" to infer it.
                 T blp_item = new T();
                 item_type = blp_item.friendlyName;
 
-                GUILayout.Label(
-                    "No " + item_type + "s loaded. Either press \"Load " + item_type + "s\"\n" +
-                    "to load known " + item_type + "s from the account,\n" +
-                    "Or press \"Create new " + item_type + "\" to create a new one.", new GUIStyle() { fontStyle = FontStyle.Bold });
+                if (m_showWithAssets && vals.Count > 0)
+                    GUILayout.Label(
+                        "All " + item_type + "s are filtered out, you might want" +
+                        "to deselect 'Show only items with local assets'"
+                        , new GUIStyle() { fontStyle = FontStyle.Bold });
+                else
+                    GUILayout.Label(
+                        "No " + item_type + "s loaded. Either press \"Load " + item_type + "s\"\n" +
+                        "to load known " + item_type + "s from the account,\n" +
+                        "Or press \"Create new " + item_type + "\" to create a new one."
+                        , new GUIStyle() { fontStyle = FontStyle.Bold });
             }
 
             if (GUILayout.Button("Load " + item_type + "s"))

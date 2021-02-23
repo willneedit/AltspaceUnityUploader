@@ -117,16 +117,45 @@ namespace AltSpace_Unity_Uploader
 
             if (vals.Count > 0)
             {
+                GUIStyle style = new GUIStyle() { fontStyle = FontStyle.Bold };
+
                 // We got at least one item, pick the type from one.
                 item_type = vals.First().friendlyName;
 
                 scrollPosition = GUILayout.BeginScrollView(scrollPosition);
+
+                EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
+                EditorGUILayout.LabelField(" ", style);
+                GUILayout.FlexibleSpace();
+                EditorGUILayout.LabelField("Local", style, GUILayout.Width(60.0f));
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
+                EditorGUILayout.LabelField("Name", style);
+                GUILayout.FlexibleSpace();
+                EditorGUILayout.LabelField("Asset", style, GUILayout.Width(60.0f));
+                EditorGUILayout.EndHorizontal();
+
                 foreach (var item in vals)
                 {
                     EditorGUILayout.BeginHorizontal(GUILayout.Width(120.0f));
 
                     EditorGUILayout.LabelField(item.itemName);
                     GUILayout.FlexibleSpace();
+
+                    if (item.exists)
+                    {
+                        style.normal.textColor = new Color(0, 0.62f, 0);
+                        EditorGUILayout.LabelField("OK", style, GUILayout.Width(60.0f));
+                    }
+                    else if(item.isSet)
+                    {
+                        style.normal.textColor = new Color(0.62f, 0, 0);
+                        EditorGUILayout.LabelField("missing", style, GUILayout.Width(60.0f));
+                    }
+                    else
+                        EditorGUILayout.LabelField(" ", style, GUILayout.Width(60.0f));
+
                     if (GUILayout.Button("Select", EditorStyles.miniButton))
                         select_fn(item.id);
 

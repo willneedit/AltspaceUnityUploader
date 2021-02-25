@@ -398,6 +398,51 @@ namespace AltSpace_Unity_Uploader
                 DescribeAssetBundles(item.asset_bundles);
             }
         }
+
+        public static bool ExistsOfficialUploader { get => Directory.Exists("Assets/Altspace/Export Assets"); }
+        public static void CleanupOfficialUploader()
+        {
+            System.Diagnostics.StackTrace st = new System.Diagnostics.StackTrace(new System.Diagnostics.StackFrame(true));
+            System.Diagnostics.StackFrame sf = st.GetFrame(0);
+
+            string AUURootPath = Path.GetDirectoryName(sf.GetFileName());
+
+            // Deal with shared assets: Move them over to the Altspace Unity Uploader
+            string dotnetzip_src = Path.Combine("Assets", "Plugins");
+            string dotnetzip_dst = Path.Combine(AUURootPath, "DotNetZip");
+            if (Directory.Exists(dotnetzip_src))
+            {
+                if (!File.Exists(Path.Combine(dotnetzip_dst, "Ionic.Zip.Unity.dll")))
+                {
+                    Debug.Log("Moving shared asset DotNetZip...");
+                    foreach (string file in Directory.GetFiles(dotnetzip_src, "Ionic.Zip.Unity.*"))
+                    {
+                        string name = Path.GetFileName(file);
+                        File.Move(file, Path.Combine(dotnetzip_dst, name));
+                    }
+                }
+
+                Directory.Delete(dotnetzip_src, true);
+                File.Delete(dotnetzip_src + ".meta");
+            }
+
+            string shaders_src = Path.Combine("Assets", "Altspace", "Export Assets", "Shaders");
+            string shaders_dst = Path.Combine(AUURootPath, "Shaders");
+
+            if(Directory.Exists(shaders_src))
+            {
+                if(!Directory.Exists(shaders_dst))
+                {
+                    Directory.Move(shaders_src, shaders_dst);
+                    File.Move(shaders_src + ".meta", shaders_dst + ".meta");
+                }
+            }
+
+            // Now delete the rest of the official uploader
+            Directory.Delete("Assets/Altspace", true);
+            File.Delete("Assets/Altspace.meta");
+            AssetDatabase.Refresh();
+        }
     }
 
 }

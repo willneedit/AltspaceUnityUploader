@@ -62,6 +62,7 @@ namespace AltSpace_Unity_Uploader
         public int SelectShader = 0;
         public bool DefaultShaderOnly = true;
         public bool CheckBuildEnv = true;
+        public bool WarnOfficialUploader = true;
 
         public string KitsRootDirectory = "Assets/Prefabs";
         public bool KitsSetLayer = false;
@@ -370,6 +371,31 @@ namespace AltSpace_Unity_Uploader
                 Debug.LogWarning("Current recommendation is to use Unity " + Common.strictUnityVersion + ".\nOther builds, like your " + Application.unityVersion + " may or may not work.");
             }
 
+            if(settings.WarnOfficialUploader && Common.ExistsOfficialUploader)
+            {
+
+                int result = EditorUtility.DisplayDialogComplex(
+                    "Information",
+                    "The official Altspace uploader is still installed. \n" +
+                    "Do you wish to cleanly remove it and all of its artifacts?",
+                    "Yes", "Not yet", "No and don't ask"
+                );
+
+                if (result == 2)
+                {
+                    settings.WarnOfficialUploader = false;
+                    EditorUtility.DisplayDialog(
+                        "Info",
+                        "Your choice. You can change your mind on opening the settings window\n" +
+                        "and clicking 'Remove official uploader'.",
+                        "Understood"
+                    );
+                }
+
+                if (result == 0)
+                    Common.CleanupOfficialUploader();
+            }
+
             if (settings.CheckBuildEnv)
             {
                 Debug.Log("Checking build settings...");
@@ -559,6 +585,17 @@ namespace AltSpace_Unity_Uploader
             {
                 settings = _settings;
                 Close();
+            }
+
+            if (Common.ExistsOfficialUploader)
+            {
+                EditorGUILayout.Space(20);
+                EditorGUILayout.LabelField(
+                    "You can remove the official uploader by clicking here.", 
+                    new GUIStyle() { fontStyle = FontStyle.Bold });
+
+                if (GUILayout.Button("Remove official uploader"))
+                    Common.CleanupOfficialUploader();
             }
 
             EditorGUILayout.EndVertical();

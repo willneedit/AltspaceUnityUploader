@@ -23,60 +23,25 @@ namespace AltSpace_Unity_Uploader
         private static string _login = null;
         private static string _password = null;
         private static userEntryJSON _userEntry = null;
-        private static bool _trieduserEntry = false;
-        private static CookieContainer _cookieContainer = null;
-        private static HttpClient _client = null;
         
         /// <summary>
         /// ID of the currently logged in user, null if not logged in or unavailable.
         /// </summary>
         public static string userid
         {
-            get
-            {
-                if (!IsConnected) return null;
-
-                if (_userEntry == null && !_trieduserEntry)
-                {
-                    HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync("api/users/me.json").Result;
-                    if (result.IsSuccessStatusCode)
-                    {
-                        string res = result.Content.ReadAsStringAsync().Result;
-                        userListJSON l = JsonUtility.FromJson<userListJSON>(res);
-                        if (l != null && l.users.Count > 0)
-                            _userEntry = l.users[0];
-                    }
-                    _trieduserEntry = true;
-                }
-
-                return _userEntry == null ? null : _userEntry.user_id;
-            }
+            get => _userEntry == null ? null : _userEntry.user_id;
         }
 
         /// <summary>
         /// Returns the HTTP Client (decorated with credential cookie, if available) if available
         /// </summary>
         /// <returns>Client if present, null otherwise</returns>
-        public static HttpClient GetHttpClient()
-        {
-            if (_cookieContainer == null)
-            {
-                _cookieContainer = new CookieContainer();
-                _client = null;
-            }
-
-            if (_client != null) return _client;
-
-            HttpClientHandler handler = new HttpClientHandler() { CookieContainer = _cookieContainer };
-            _client = new HttpClient(handler) { BaseAddress = new System.Uri("https://account.altvr.com") };
-
-            return _client;
-        }
+        public static HttpClient GetHttpClient() => WebClient.GetHttpClient();
 
         /// <summary>
         /// true if the user is logged in (credential cookie present)
         /// </summary>
-        public static bool IsConnected { get { return _cookieContainer != null; } }
+        public static bool IsConnected => WebClient.IsAuthenticated;
 
         /// <summary>
         /// Create an item in AltspaceVR.
@@ -437,27 +402,15 @@ namespace AltSpace_Unity_Uploader
 
         private void DoLogin()
         {
-            var parameters = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("user[email]", _login),
-                new KeyValuePair<string, string>("user[password]", _password)
-            });
-
-            try
-            {
-                HttpResponseMessage result = GetHttpClient().PostAsync("/users/sign_in.json", parameters).Result;
-                result.EnsureSuccessStatusCode();
-                _trieduserEntry = false;
-                _userEntry = null;
-                //foreach(Cookie cookie in _cookieContainer.GetCookies(new System.Uri("https://account.altvr.com")))
-                //{
-                //    Debug.Log("Cookie: " + cookie.Name + "=" + cookie.Value);
-                //}
-            }
-            catch (HttpRequestException)
+            var req = new WebClient.LoginRequest(_login, _password);
+            if(!req.Process())
             {
                 ShowNotification(new GUIContent("Login failed"), 5.0f);
-                _cookieContainer = null;
+            }
+            else
+            {
+                var idreq = new WebClient.UserIDRequest();
+                if (idreq.Process()) _userEntry = idreq.userEntry;
             }
         }
 
@@ -465,18 +418,14 @@ namespace AltSpace_Unity_Uploader
         {
             OnlineKitManager.ResetContents();
             OnlineTemplateManager.ResetContents();
+            _userEntry = null;
 
-            try
-            {
-                HttpResponseMessage result = GetHttpClient().DeleteAsync("/users/sign_out.json").Result;
-                result.EnsureSuccessStatusCode();
-            }
-            catch (HttpRequestException)
+            var req = new WebClient.LogoutRequest();
+            if(!req.Process())
             {
                 Debug.LogWarning("Logout failed");
             }
 
-            _cookieContainer = null;
         }
     }
 }

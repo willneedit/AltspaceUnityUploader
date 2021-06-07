@@ -10,6 +10,19 @@ namespace AltSpace_Unity_Uploader
         paginationJSON pages { get; }
     }
 
+    [Serializable]
+    public class userPwCredentialsJSON
+    {
+        public string email;
+        public string password;
+    }
+
+    [Serializable]
+    public class userLoginJSON
+    {
+        public userPwCredentialsJSON user = new userPwCredentialsJSON();
+    }
+
     /// <summary>
     /// Part of a user entry
     /// </summary>

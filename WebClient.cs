@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if UNITY_EDITOR
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,6 +9,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 
 namespace AltSpace_Unity_Uploader
@@ -53,6 +56,11 @@ namespace AltSpace_Unity_Uploader
             public virtual bool Process()
             {
                 return Send(this);
+            }
+
+            public virtual Task<HttpResponseMessage> ProcessAsync()
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -112,6 +120,85 @@ namespace AltSpace_Unity_Uploader
                 _userentry = l.users[0];
                 return true;
 
+            }
+        }
+
+        public class PagedAssetRequest<T> : AltspaceRequest
+        {
+            private T _pagedAsset;
+            private int _page = 0;
+            private int _pages = 0;
+
+            public T pagedAsset { get => _pagedAsset; }
+            public int page { get => _page; }
+            public int pages { get => _pages; }
+
+            public PagedAssetRequest(int page)
+            {
+                string item_type_plural;
+                if (typeof(T) == typeof(kitsJSON))
+                    item_type_plural = "kits";
+                else if (typeof(T) == typeof(templatesJSON))
+                    item_type_plural = "space_templates";
+                else
+                    throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
+
+                _apiUrl = "/api/" + item_type_plural + "/my.json?page=" + page;
+                _method = HttpMethod.Get;
+            }
+
+            public override bool Process()
+            {
+                string content;
+                if (!Send(this, out content)) return false;
+                _pagedAsset = JsonUtility.FromJson<T>(content);
+                IPaginated p = (IPaginated)_pagedAsset;
+                _page = p.pages.page;
+                _pages = p.pages.pages;
+                return true;
+            }
+        }
+
+        public class UploadRequest : AltspaceRequest
+        {
+            public UploadRequest(AltspaceListItem item, string uploadFileName, bool isExclusivelyAndroid = false)
+            {
+                MultipartFormDataContent _inner = null;
+
+                var zipContents = new ByteArrayContent(File.ReadAllBytes(uploadFileName));
+                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+
+                var colorSpace = PlayerSettings.colorSpace == ColorSpace.Linear ? "linear" : "gamma";
+                var srp = PlayerSettings.stereoRenderingPath == StereoRenderingPath.Instancing
+                    ? (isExclusivelyAndroid ? "spmv" : "spi")
+                    : (PlayerSettings.stereoRenderingPath == StereoRenderingPath.SinglePass)
+                        ? "sp"
+                        : "mp";
+
+                _inner = new MultipartFormDataContent
+                {
+                    { new StringContent("" + Common.usingUnityVersion), item.type + "[game_engine_version]" },
+                    { new StringContent(srp), item.type + "[stereo_render_mode]" },
+                    { new StringContent(colorSpace), item.type + "[color_space]" },
+                    { zipContents, item.type + "[zip]", item.bundleName + ".zip" }
+                };
+
+                _apiUrl = "/api/" + item.type + "s/" + item.id + ".json";
+                _method = HttpMethod.Put;
+
+                _content = _inner.ReadAsByteArrayAsync().Result;
+                Headers.ContentType = _inner.Headers.ContentType;
+                Headers.ContentDisposition = _inner.Headers.ContentDisposition;
+            }
+
+            public override Task<HttpResponseMessage> ProcessAsync()
+            {
+                return SendAsync(this);
+            }
+
+            public override bool Process()
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -196,3 +283,5 @@ namespace AltSpace_Unity_Uploader
         }
     }
 }
+
+#endif

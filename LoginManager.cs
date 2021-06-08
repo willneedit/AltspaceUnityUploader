@@ -189,46 +189,20 @@ namespace AltSpace_Unity_Uploader
 
         public static void LoadAltVRItems<T>(Action<T> callback)
         {
-            string item_type_plural;
-
-            if (typeof(T) == typeof(kitsJSON))
-                item_type_plural = "kits";
-            else if (typeof(T) == typeof(templatesJSON))
-                item_type_plural = "space_templates";
-            else
-                throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
-
             int currentPage = 0;
             int maxPage = 1;
 
             while (currentPage < maxPage)
             {
-                EditorUtility.DisplayProgressBar("Reading kit descriptions", "Loading page... (" + currentPage + "/" + maxPage + ")", currentPage / maxPage);
+                EditorUtility.DisplayProgressBar("Reading item list", "Loading page... (" + currentPage + "/" + maxPage + ")", currentPage / maxPage);
 
                 currentPage++;
 
-                try
+                var par = new WebClient.PagedAssetRequest<T>(currentPage);
+                if(par.Process())
                 {
-                    HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync("api/" + item_type_plural + "/my.json?page=" + currentPage).Result;
-                    result.EnsureSuccessStatusCode();
-
-                    T kitsPage = JsonUtility.FromJson<T>(result.Content.ReadAsStringAsync().Result);
-                    IPaginated p = (IPaginated)kitsPage;
-
-                    if (kitsPage == null)
-                        Debug.LogError("Completely malformed JSON");
-                    else if (p.pages == null)
-                        Debug.LogWarning("Pagination information missing -- assuming single page");
-                    else
-                    {
-                        maxPage = p.pages.pages;
-                        callback(kitsPage);
-
-                    }
-                }
-                catch (HttpRequestException)
-                {
-
+                    maxPage = par.pages;
+                    callback(par.pagedAsset);
                 }
             }
 
@@ -267,24 +241,13 @@ namespace AltSpace_Unity_Uploader
                 else
                     itemUploadFile += ".zip";
 
-                List<BuildTarget> singleTarget = new List<BuildTarget>();
-                singleTarget.Add(target);
+                List<BuildTarget> singleTarget = new List<BuildTarget> { target };
 
                 item.buildAssetBundle(singleTarget, addScreenshots, itemUploadFile);
-
-                MultipartFormDataContent form = new MultipartFormDataContent();
-                ByteArrayContent zipContents = new ByteArrayContent(File.ReadAllBytes(itemUploadFile));
-
-                // Explicitly set content type
-                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
-
-                form.Add(zipContents, item.type + "[zip]", item.bundleName + ".zip");
-                form.Add(new StringContent("" + Common.usingUnityVersion), item.type + "[game_engine_version]");
-
-                uploadTask =
-                    LoginManager.GetHttpClient().PutAsync("/api/" + item.type + "s/" + item.id + ".json", form);
-
                 addScreenshots = false;
+
+                var upr = new WebClient.UploadRequest(item, itemUploadFile, target == BuildTarget.Android);
+                uploadTask = upr.ProcessAsync();
             }
 
             // And wait for the final upload to be finished.

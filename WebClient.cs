@@ -123,7 +123,29 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public class PagedAssetRequest<T> : AltspaceRequest
+        public class SingleAssetRequest<T> : AltspaceRequest
+        {
+            private T _singleAsset;
+
+            public T singleAsset { get => _singleAsset; }
+
+            public SingleAssetRequest(string asset_id)
+            {
+                _apiUrl = "/api/" + DeriveWebTypeName<T>() + "/" + asset_id;
+                _method = HttpMethod.Get;
+            }
+
+            public override bool Process()
+            {
+                string content;
+                if (!Send(this, out content)) return false;
+
+                _singleAsset = JsonUtility.FromJson<T>(content);
+                return true;
+            }
+        }
+
+        public class PagedAssetsRequest<T> : AltspaceRequest
         {
             private T _pagedAsset;
             private int _page = 0;
@@ -133,19 +155,12 @@ namespace AltSpace_Unity_Uploader
             public int page { get => _page; }
             public int pages { get => _pages; }
 
-            public PagedAssetRequest(int page)
+            public PagedAssetsRequest(int page)
             {
-                string item_type_plural;
-                if (typeof(T) == typeof(kitsJSON))
-                    item_type_plural = "kits";
-                else if (typeof(T) == typeof(templatesJSON))
-                    item_type_plural = "space_templates";
-                else
-                    throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
-
-                _apiUrl = "/api/" + item_type_plural + "/my.json?page=" + page;
+                _apiUrl = "/api/" + DeriveWebTypeName<T>() + "/my.json?page=" + page;
                 _method = HttpMethod.Get;
             }
+
 
             public override bool Process()
             {
@@ -163,8 +178,6 @@ namespace AltSpace_Unity_Uploader
         {
             public UploadRequest(AltspaceListItem item, string uploadFileName, bool isExclusivelyAndroid = false)
             {
-                MultipartFormDataContent _inner = null;
-
                 var zipContents = new ByteArrayContent(File.ReadAllBytes(uploadFileName));
                 zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
 
@@ -175,7 +188,7 @@ namespace AltSpace_Unity_Uploader
                         ? "sp"
                         : "mp";
 
-                _inner = new MultipartFormDataContent
+                var inner = new MultipartFormDataContent
                 {
                     { new StringContent("" + Common.usingUnityVersion), item.type + "[game_engine_version]" },
                     { new StringContent(srp), item.type + "[stereo_render_mode]" },
@@ -183,12 +196,12 @@ namespace AltSpace_Unity_Uploader
                     { zipContents, item.type + "[zip]", item.bundleName + ".zip" }
                 };
 
+                _content = inner.ReadAsByteArrayAsync().Result;
+                Headers.ContentType = inner.Headers.ContentType;
+                Headers.ContentDisposition = inner.Headers.ContentDisposition;
+
                 _apiUrl = "/api/" + item.type + "s/" + item.id + ".json";
                 _method = HttpMethod.Put;
-
-                _content = _inner.ReadAsByteArrayAsync().Result;
-                Headers.ContentType = _inner.Headers.ContentType;
-                Headers.ContentDisposition = _inner.Headers.ContentDisposition;
             }
 
             public override Task<HttpResponseMessage> ProcessAsync()
@@ -205,6 +218,23 @@ namespace AltSpace_Unity_Uploader
         private static CookieContainer _cookieContainer = null;
         private static HttpClient _client = null;
         private static string _authToken;
+
+        /// <summary>
+        /// Derive the name needed for the API URL from the type of the JSON structure we expect to get.
+        /// </summary>
+        /// <typeparam name="T">kitJSON, kitsJSON; templateJSON, templatesJSON</typeparam>
+        /// <returns>"kits" or "space_templates"</returns>
+        private static string DeriveWebTypeName<T>()
+        {
+            string item_type_plural;
+            if (typeof(T) == typeof(kitsJSON) || typeof(T) == typeof(kitJSON))
+                item_type_plural = "kits";
+            else if (typeof(T) == typeof(templatesJSON) || typeof(T) == typeof(templateJSON))
+                item_type_plural = "space_templates";
+            else
+                throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
+            return item_type_plural;
+        }
 
         public static HttpClient GetHttpClient()
         {

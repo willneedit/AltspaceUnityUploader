@@ -163,28 +163,10 @@ namespace AltSpace_Unity_Uploader
         /// <returns>The item, or null</returns>
         public static T LoadSingleAltVRItem<T>(string item_id)
         {
-            string item_type_plural;
+            var sar = new WebClient.SingleAssetRequest<T>(item_id);
+            if (!sar.Process()) return default;
 
-            if (typeof(T) == typeof(kitJSON))
-                item_type_plural = "kits";
-            else if (typeof(T) == typeof(templateJSON))
-                item_type_plural = "space_templates";
-            else
-                throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
-
-            try
-            {
-                HttpResponseMessage result = GetHttpClient().GetAsync("api/" + item_type_plural + "/" + item_id).Result;
-                result.EnsureSuccessStatusCode();
-
-                return JsonUtility.FromJson<T>(result.Content.ReadAsStringAsync().Result);
-            }
-            catch (HttpRequestException)
-            {
-                Debug.LogError("Error reading Altspace item");
-            }
-
-            return default;
+            return sar.singleAsset;
         }
 
         public static void LoadAltVRItems<T>(Action<T> callback)
@@ -198,7 +180,7 @@ namespace AltSpace_Unity_Uploader
 
                 currentPage++;
 
-                var par = new WebClient.PagedAssetRequest<T>(currentPage);
+                var par = new WebClient.PagedAssetsRequest<T>(currentPage);
                 if(par.Process())
                 {
                     maxPage = par.pages;

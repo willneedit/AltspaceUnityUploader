@@ -59,7 +59,7 @@ namespace AltSpace_Unity_Uploader
         /// <returns></returns>
         public bool updateAltVRItem()
         {
-            if (!LoginManager.IsConnected)
+            if (!WebClient.IsAuthenticated)
                 return false;
 
             string new_id = LoginManager.ManageAltVRItem(id, type, itemName, description, imageFile, tag_list);

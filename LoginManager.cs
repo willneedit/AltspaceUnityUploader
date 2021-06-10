@@ -20,8 +20,8 @@ namespace AltSpace_Unity_Uploader
     {
         public static readonly string versionString = "1.1.0";
 
-        private static string _login = null;
-        private static string _password = null;
+        private static string _login = "";
+        private static string _password = "";
         private static userEntryJSON _userEntry = null;
         
         /// <summary>
@@ -37,11 +37,6 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         /// <returns>Client if present, null otherwise</returns>
         public static HttpClient GetHttpClient() => WebClient.GetHttpClient();
-
-        /// <summary>
-        /// true if the user is logged in (credential cookie present)
-        /// </summary>
-        public static bool IsConnected => WebClient.IsAuthenticated;
 
         /// <summary>
         /// Create an item in AltspaceVR.
@@ -275,14 +270,22 @@ namespace AltSpace_Unity_Uploader
                 return;
             }
 
-            if (_login == null || _password == null)
-                RevertLoginData();
+            WebClient.GetHttpClient();
+            if(WebClient.IsAuthenticated && _userEntry == null)
+            {
+                var uidr = new WebClient.UserIDRequest();
+                if (uidr.Process())
+                    _userEntry = uidr.userEntry;
+                else
+                    WebClient.ForgetAuthentication();
+
+            }
 
             GUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
 
-            Common.DisplayStatus("Login State:", "Logged out", IsConnected ? "Logged in" : null);
+            Common.DisplayStatus("Login State:", "Logged out", WebClient.IsAuthenticated ? "Logged in" : null);
 
-            if (IsConnected)
+            if (WebClient.IsAuthenticated)
             {
                 if (userid != null)
                 {
@@ -294,13 +297,10 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.Space();
 
-            if (!IsConnected)
+            if (!WebClient.IsAuthenticated)
             {
                 _login = EditorGUILayout.TextField(new GUIContent("EMail", "The EMail you've registered yourself to Altspace with."), _login);
                 _password = EditorGUILayout.PasswordField(new GUIContent("Password", "Your password"), _password);
-
-                if (GUILayout.Button(new GUIContent("Reread login credentials", "Revert back to the login credentials in the settings")))
-                    RevertLoginData();
 
                 if (GUILayout.Button("Log In"))
                     DoLogin();
@@ -335,28 +335,11 @@ namespace AltSpace_Unity_Uploader
         }
 
 
-        private void RevertLoginData()
-        {
-            Settings s = SettingsManager.settings;
-
-            _login = s.Login;
-            _password = s.Password;
-
-            Repaint();
-        }
-
         private void DoLogin()
         {
             var req = new WebClient.LoginRequest(_login, _password);
             if(!req.Process())
-            {
                 ShowNotification(new GUIContent("Login failed"), 5.0f);
-            }
-            else
-            {
-                var idreq = new WebClient.UserIDRequest();
-                if (idreq.Process()) _userEntry = idreq.userEntry;
-            }
         }
 
         private void DoLogout()

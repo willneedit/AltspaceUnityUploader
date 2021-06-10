@@ -232,7 +232,7 @@ namespace AltSpace_Unity_Uploader
 
             }
 
-            if (LoginManager.IsConnected)
+            if (WebClient.IsAuthenticated)
             {
                 if (GUILayout.Button("Select " + item.friendlyName.Capitalize()))
                     showSelection_fn();

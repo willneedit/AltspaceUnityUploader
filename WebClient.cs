@@ -23,6 +23,26 @@ namespace AltSpace_Unity_Uploader
             UA_FORGET   = 0x0002    // Forget after this request
         }
 
+        [Serializable]
+        public class cookieJSON
+        {
+            public cookieJSON(string _name, string _value)
+            {
+                name = _name;
+                value = _value;
+            }
+
+            public string name;
+            public string value;
+        }
+
+        [Serializable]
+        public class sessionStateJSON
+        {
+            public List<cookieJSON> cookies = new List<cookieJSON>();
+            public string auth_token;
+        }
+
         public class AltspaceRequest : HttpContent
         {
             protected byte[] _content;
@@ -76,6 +96,16 @@ namespace AltSpace_Unity_Uploader
                 _apiUrl = "/users/sign_in.json";
                 _method = HttpMethod.Post;
             }
+
+            public override bool Process()
+            {
+                if (!Send(this)) return false;
+
+                CreateSessionDataFile();
+
+                return true;
+            }
+
         }
 
         public class LogoutRequest : AltspaceRequest
@@ -219,6 +249,11 @@ namespace AltSpace_Unity_Uploader
         private static HttpClient _client = null;
         private static string _authToken;
 
+        private static string _sessionDataFile = "Assets/AUU_User_Session.json";
+
+
+        public static CookieContainer cookieContainer { get => _cookieContainer; }
+
         /// <summary>
         /// Derive the name needed for the API URL from the type of the JSON structure we expect to get.
         /// </summary>
@@ -242,6 +277,11 @@ namespace AltSpace_Unity_Uploader
             {
                 _cookieContainer = new CookieContainer();
                 _client = null;
+                if (SettingsManager.settings.RememberLogin && File.Exists(_sessionDataFile))
+                {
+                    string json = File.ReadAllText(_sessionDataFile);
+                    DeSerializeSessionState(json);
+                }
             }
 
             if (_client != null) return _client;
@@ -256,6 +296,21 @@ namespace AltSpace_Unity_Uploader
         {
             _cookieContainer = null;
             _authToken = null;
+            DeleteSessionDataFile();
+        }
+
+        public static void CreateSessionDataFile()
+        {
+            if (SettingsManager.settings.RememberLogin)
+            {
+                string json = SerializeSessionState();
+                File.WriteAllText(_sessionDataFile, json);
+            }
+        }
+        public static void DeleteSessionDataFile()
+        {
+            File.Delete(_sessionDataFile);
+            File.Delete(_sessionDataFile + ".meta");
         }
 
         public static bool IsAuthenticated => _authToken != null;
@@ -310,6 +365,30 @@ namespace AltSpace_Unity_Uploader
         {
             var res = SendAsync(request, ua);
             return ReadResponse(res, out _);
+        }
+
+        public static string SerializeSessionState()
+        {
+            sessionStateJSON sj = new sessionStateJSON();
+            sj.auth_token = _authToken;
+            foreach (Cookie cookie in cookieContainer.GetCookies(new System.Uri("https://account.altvr.com")))
+                sj.cookies.Add(new cookieJSON(cookie.Name, cookie.Value));
+
+            return JsonUtility.ToJson(sj);
+        }
+
+        public static void DeSerializeSessionState(string sjJSON)
+        {
+            var client = GetHttpClient();
+
+            sessionStateJSON sj = JsonUtility.FromJson<sessionStateJSON>(sjJSON);
+            _authToken = sj.auth_token;
+
+            foreach(cookieJSON cj in sj.cookies)
+            {
+                Cookie c = new Cookie(cj.name, cj.value, "/", "account.altvr.com");
+                cookieContainer.Add(c);
+            }
         }
     }
 }

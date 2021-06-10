@@ -54,8 +54,7 @@ namespace AltSpace_Unity_Uploader
     [Serializable]
     public class Settings
     {
-        public string Login = "";
-        public string Password = "";
+        public bool RememberLogin = false;
         public bool BuildForPC = true;
         public bool BuildForAndroid = true;
         public bool BuildForMac = true;
@@ -431,11 +430,22 @@ namespace AltSpace_Unity_Uploader
             m_selectedTab = GUILayout.Toolbar(m_selectedTab, m_tabs);
 
             EditorGUILayout.Space(20);
-            
+
             if (m_tabs[m_selectedTab] == "General")
             {
-                _settings.Login = EditorGUILayout.TextField(new GUIContent("EMail", "The EMail you've registered yourself to Altspace with."), _settings.Login);
-                _settings.Password = EditorGUILayout.PasswordField(new GUIContent("Password", "Your password"), _settings.Password);
+                bool oldRememberLogin = _settings.RememberLogin;
+
+                _settings.RememberLogin = EditorGUILayout.Toggle(new GUIContent(
+                    "Remember login state",
+                    "Saves the login state between sessions and keeps you logged in."), _settings.RememberLogin);
+
+                // If we just switched it off, delete the saved session data as well.
+                if (!_settings.RememberLogin && oldRememberLogin)
+                    WebClient.DeleteSessionDataFile();
+
+                // Other way round, if we are logged in and switched this option on, create this file.
+                if (_settings.RememberLogin && !oldRememberLogin && WebClient.IsAuthenticated)
+                    WebClient.CreateSessionDataFile();
 
                 EditorGUILayout.Space(10);
 

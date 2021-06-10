@@ -382,7 +382,7 @@ namespace AltSpace_Unity_Uploader
         public static void ShowItem(AltspaceListItem item)
         {
             
-            if (LoginManager.IsConnected)
+            if (WebClient.IsAuthenticated)
             {
                 EditorGUILayout.LabelField("Selected " + item.friendlyName + ":");
                 DisplayStatus("  Name:", "none", item.itemName);

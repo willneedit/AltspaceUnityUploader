@@ -3,8 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.XR.Oculus;
 using UnityEditor;
+using UnityEditor.XR.Management;
+using UnityEditor.XR.Management.Metadata;
 using UnityEngine;
+using UnityEngine.XR;
+using UnityEngine.XR.Management;
 
 namespace AltSpace_Unity_Uploader
 {
@@ -92,10 +97,21 @@ namespace AltSpace_Unity_Uploader
         public string name;
     }
 
-    [InitializeOnLoad]
-    [ExecuteInEditMode]
-    public class SettingsManager : EditorWindow
+    internal static class ProjectSettingsSetter
     {
+        public static void SetProjectSettings()
+        {
+            SetLayerSettings();
+            SetXRPluginsEnabled(true);
+
+            void delayed()
+            {
+                EditorApplication.update -= delayed;
+                SetStereoRenderMode(XRSettings.StereoRenderingMode.SinglePassInstanced);
+            };
+            EditorApplication.update += delayed;
+        }
+
         private static LayerInfo[] layers =
         {
             // 1 - 8 are predefined by Unity.
@@ -109,6 +125,107 @@ namespace AltSpace_Unity_Uploader
             new LayerInfo(31, "Interactables")
         };
 
+        /// <summary>
+        /// Check and fix the layer settings. 14 for Nav Mesh, 15 for Avatar Lighting.
+        /// </summary>
+        private static void SetLayerSettings()
+        {
+            SerializedObject tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            SerializedProperty layersProp = tagManager.FindProperty("layers");
+
+            foreach (LayerInfo li in layers)
+            {
+                SerializedProperty lp = layersProp.GetArrayElementAtIndex(li.layer);
+                if (lp != null) lp.stringValue = li.name;
+            }
+
+            tagManager.ApplyModifiedProperties();
+        }
+
+
+        private static void SetXRPluginsEnabled(bool enabled)
+        {
+            XRGeneralSettings SetForBuildTarget(XRGeneralSettingsPerBuildTarget bts, BuildTargetGroup btg, string btgName)
+            {
+                XRGeneralSettings btSettings = bts.SettingsForBuildTarget(btg);
+                if (btSettings == null)
+                {
+                    btSettings = ScriptableObject.CreateInstance<XRGeneralSettings>();
+                    btSettings.name = btgName + " Settings";
+                    btSettings.Manager = ScriptableObject.CreateInstance<XRManagerSettings>();
+                    btSettings.Manager.name = btgName + " Providers";
+                    AssetDatabase.AddObjectToAsset(btSettings, bts);
+                    AssetDatabase.AddObjectToAsset(btSettings.Manager, bts);
+                    bts.SetSettingsForBuildTarget(btg, btSettings);
+                }
+
+                return btSettings;
+            }
+
+            if (!EditorBuildSettings.TryGetConfigObject(XRGeneralSettings.k_SettingsKey, out XRGeneralSettingsPerBuildTarget buildTargetSettings))
+            {
+                if (!AssetDatabase.IsValidFolder("Assets/XR"))
+                    AssetDatabase.CreateFolder("Assets", "XR");
+
+                buildTargetSettings = ScriptableObject.CreateInstance<XRGeneralSettingsPerBuildTarget>();
+                AssetDatabase.CreateAsset(buildTargetSettings, "Assets/XR/XRGeneralSettings.asset");
+                EditorBuildSettings.AddConfigObject(XRGeneralSettings.k_SettingsKey, buildTargetSettings, true);
+            }
+
+            XRGeneralSettings standaloneSettings = SetForBuildTarget(buildTargetSettings, BuildTargetGroup.Standalone, "Standalone");
+            XRGeneralSettings androidSettings = SetForBuildTarget(buildTargetSettings, BuildTargetGroup.Android, "Android");
+
+            // Enable Oculus XR plugin
+            if (enabled)
+            {
+                XRPackageMetadataStore.AssignLoader(standaloneSettings.Manager, "Unity.XR.Oculus.OculusLoader", BuildTargetGroup.Standalone);
+                XRPackageMetadataStore.AssignLoader(androidSettings.Manager, "Unity.XR.Oculus.OculusLoader", BuildTargetGroup.Android);
+            }
+            else
+            {
+                XRPackageMetadataStore.RemoveLoader(standaloneSettings.Manager, "Unity.XR.Oculus.OculusLoader", BuildTargetGroup.Standalone);
+                XRPackageMetadataStore.RemoveLoader(androidSettings.Manager, "Unity.XR.Oculus.OculusLoader", BuildTargetGroup.Android);
+            }
+
+        }
+
+        public static void SetStereoRenderMode(XRSettings.StereoRenderingMode mode)
+        {
+            var oSettings = AssetDatabase.LoadAssetAtPath<OculusSettings>("Assets/XR/Settings/Oculus Settings.asset");
+            if (oSettings == null)
+            {
+                return;
+            }
+
+            switch (mode)
+            {
+                case XRSettings.StereoRenderingMode.MultiPass:
+                    oSettings.m_StereoRenderingModeAndroid = OculusSettings.StereoRenderingModeAndroid.MultiPass;
+                    oSettings.m_StereoRenderingModeDesktop = OculusSettings.StereoRenderingModeDesktop.MultiPass;
+                    PlayerSettings.stereoRenderingPath = StereoRenderingPath.MultiPass;
+                    break;
+                case XRSettings.StereoRenderingMode.SinglePassInstanced:
+                case XRSettings.StereoRenderingMode.SinglePassMultiview:
+                    oSettings.m_StereoRenderingModeAndroid = OculusSettings.StereoRenderingModeAndroid.Multiview;
+                    oSettings.m_StereoRenderingModeDesktop = OculusSettings.StereoRenderingModeDesktop.SinglePassInstanced;
+                    PlayerSettings.stereoRenderingPath = StereoRenderingPath.Instancing;
+                    break;
+                case XRSettings.StereoRenderingMode.SinglePass:
+                    PlayerSettings.stereoRenderingPath = StereoRenderingPath.SinglePass;
+                    break;
+                default:
+                    Debug.LogErrorFormat("Unsupported render mode: {0}", mode);
+                    return;
+            }
+
+            EditorUtility.SetDirty(oSettings);
+        }
+    }
+
+    [InitializeOnLoad]
+    [ExecuteInEditMode]
+    public class SettingsManager : EditorWindow
+    {
         private static string[] m_tabs =
         {
             "General",
@@ -131,6 +248,7 @@ namespace AltSpace_Unity_Uploader
         private static KnownItemsList _kilist = null;
 
         public static bool initialized = false;
+        public static string initErrorMsg = "";
 
         public static Settings settings {
             get
@@ -234,125 +352,20 @@ namespace AltSpace_Unity_Uploader
 
         private int m_selectedTab = 0;
 
-        private static UnityEditor.PackageManager.Requests.AddRequest addResponse;
         private static UnityEditor.PackageManager.Requests.RemoveRequest delResponse;
         private static UnityEditor.PackageManager.Requests.ListRequest listResponse;
 
-#pragma warning disable
         /// <summary>
         /// Check and fix the XR settings. Still using the deprecated XR API.
         /// </summary>
         private static void CheckXRSettings()
         {
-            string[] xrSDKs = { "Oculus" };
+            EditorApplication.update -= CheckXRSettings;
 
-            if (settings.BuildForPC || settings.BuildForMac)
-            {
-                PlayerSettings.SetVirtualRealitySupported(BuildTargetGroup.Standalone, true);
-                PlayerSettings.SetVirtualRealitySDKs(BuildTargetGroup.Standalone, xrSDKs);
-            }
+            ProjectSettingsSetter.SetProjectSettings();
+            Debug.Log("Build settings adapted.");
+            initialized = true;
 
-            if (settings.BuildForAndroid)
-            {
-                PlayerSettings.SetVirtualRealitySupported(BuildTargetGroup.Android, true);
-                PlayerSettings.SetVirtualRealitySDKs(BuildTargetGroup.Android, xrSDKs);
-            }
-
-            PlayerSettings.stereoRenderingPath = StereoRenderingPath.SinglePass;
-
-        }
-#pragma warning restore
-        /// <summary>
-        /// Check and fix the layer settings. 14 for Nav Mesh, 15 for Avatar Lighting.
-        /// </summary>
-        private static void CheckLayerSettings()
-        {
-            SerializedObject tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
-            SerializedProperty layersProp = tagManager.FindProperty("layers");
-
-            foreach(LayerInfo li in layers)
-            {
-                SerializedProperty lp = layersProp.GetArrayElementAtIndex(li.layer);
-                if (lp != null) lp.stringValue = li.name;
-            }
-
-            tagManager.ApplyModifiedProperties();
-        }
-
-        private static void PackageAddResponse()
-        {
-            if (addResponse.IsCompleted)
-            {
-                EditorApplication.update -= PackageAddResponse;
-                Debug.LogWarning("Installed needed Oculus package " + addResponse.Result.name);
-                EditorApplication.update += CheckPackageInstall;
-            }
-        }
-
-        private static void PackageDelResponse()
-        {
-            if(delResponse.IsCompleted)
-            {
-                EditorApplication.update -= PackageDelResponse;
-                Debug.LogWarning("Removed package " + delResponse.PackageIdOrName);
-                EditorApplication.update += CheckPackageInstall;
-            }
-        }
-
-        private static void PackageListResponse()
-        {
-            bool oculusStandaloneInstalled = false;
-            bool oculusAndroidInstalled = false;
-            bool unityxrmgmt = false;
-
-            if (listResponse.IsCompleted)
-            {
-                EditorApplication.update -= PackageListResponse;
-
-                foreach (var package in listResponse.Result)
-                {
-                    if (package.name == "com.unity.xr.oculus.standalone")
-                        oculusStandaloneInstalled = true;
-                    else if (package.name == "com.unity.xr.oculus.android")
-                        oculusAndroidInstalled = true;
-                    else if (package.name == "com.unity.xr.management")
-                        unityxrmgmt = true;
-                }
-
-                if (unityxrmgmt)
-                {
-                    delResponse = UnityEditor.PackageManager.Client.Remove("com.unity.xr.management");
-                    EditorApplication.update += PackageDelResponse;
-                    return;
-                }
-
-                if (!oculusStandaloneInstalled && (settings.BuildForPC || settings.BuildForMac))
-                {
-                    addResponse = UnityEditor.PackageManager.Client.Add("com.unity.xr.oculus.standalone");
-                    EditorApplication.update += PackageAddResponse;
-                    return;
-                }
-
-                if (!oculusAndroidInstalled && settings.BuildForAndroid)
-                {
-                    addResponse = UnityEditor.PackageManager.Client.Add("com.unity.xr.oculus.android");
-                    EditorApplication.update += PackageAddResponse;
-                    return;
-                }
-
-                CheckXRSettings();
-                CheckLayerSettings();
-                Debug.Log("Player Settings adjusted for AltspaceVR build, we're good to go.");
-                initialized = true;
-                GetWindow<LoginManager>().Repaint();
-            }
-        }
-
-        private static void CheckPackageInstall()
-        {
-            EditorApplication.update -= CheckPackageInstall;
-            listResponse = UnityEditor.PackageManager.Client.List(true);
-            EditorApplication.update += PackageListResponse;
         }
 
 
@@ -360,10 +373,16 @@ namespace AltSpace_Unity_Uploader
         {
             initialized = false;
 
+            if(Common.usingUnityVersion < Common.minimumUnityVersion)
+            {
+                Debug.LogError("Your Unity version is too old. You need to update to " + Common.strictUnityVersion + ".");
+                initErrorMsg = "Outdated Unity version\ncheck console log";
+                return;
+            }
             if(Common.usingUnityVersion != Common.currentUnityVersion)
             {
-                Debug.LogWarning("Your Unity version is " + Application.unityVersion + ", which is different from a 2019.4 version.");
-                Debug.LogWarning("It is STRONGLY recommended to install 2019.4.2f1 and update this project to use it.");
+                Debug.LogWarning("Your Unity version is " + Application.unityVersion + ", which is different from a " + Common.relaxedUnityVersion + " version.");
+                Debug.LogWarning("It is STRONGLY recommended to install " + Common.strictUnityVersion + " and update this project to use it.");
             }
             else if(Application.unityVersion != Common.strictUnityVersion)
             {
@@ -398,7 +417,7 @@ namespace AltSpace_Unity_Uploader
             if (settings.CheckBuildEnv)
             {
                 Debug.Log("Checking build settings...");
-                EditorApplication.update += CheckPackageInstall;
+                EditorApplication.update += CheckXRSettings;
             }
             else
                 initialized = true;
@@ -483,7 +502,7 @@ namespace AltSpace_Unity_Uploader
                 {
                     settings = _settings; // Save settings.
                     Debug.Log("Checking build settings now, hold on tight...");
-                    EditorApplication.update += CheckPackageInstall;
+                    EditorApplication.update += CheckXRSettings;
                 }
 
             }

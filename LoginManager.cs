@@ -18,7 +18,7 @@ namespace AltSpace_Unity_Uploader
     [ExecuteInEditMode]
     public class LoginManager : EditorWindow
     {
-        public static readonly string versionString = "1.1.0";
+        public static readonly string versionString = "2.0.0";
 
         private static string _login = "";
         private static string _password = "";
@@ -265,7 +265,14 @@ namespace AltSpace_Unity_Uploader
                 EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
                 EditorGUILayout.Space(10);
 
-                EditorGUILayout.LabelField(new GUIContent("Initializing, please wait..."));
+                if (!String.IsNullOrEmpty(SettingsManager.initErrorMsg))
+                {
+                    GUIStyle style = new GUIStyle() { fontStyle = FontStyle.Bold, fontSize = 18 };
+                    style.normal.textColor = new Color(0.80f, 0, 0);
+                    EditorGUILayout.LabelField(SettingsManager.initErrorMsg, style);
+                }
+                else
+                    EditorGUILayout.LabelField(new GUIContent("Initializing, please wait..."));
                 EditorGUILayout.EndVertical();
                 return;
             }

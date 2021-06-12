@@ -23,7 +23,23 @@ namespace AltSpace_Unity_Uploader
 
             kit.itemPath = Common.FileSelectionField(new GUIContent("Kit Prefab Directory:"), true, false, kit.itemPath);
 
-            if (kit.isSet && !kit.exists)
+            if (!kit.isSet) return;
+
+            if(!kit.itemPath.StartsWith("Assets"))
+            {
+                var style = new GUIStyle()
+                {
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                };
+                style.normal.textColor = new Color(0.80f, 0, 0);
+
+                GUILayout.Label(
+                    "This directory is not within this project's Assets.\n"+
+                    "You need to set a directory path to any place within the Assets of this project,\n"+
+                    "preferably to a directory you solely dedicate to the future kit objects.", style);
+            }
+            else if (!kit.exists)
             {
                 GUILayout.Label("The directory doesn't exist.\nPress the button below to create it.", new GUIStyle()
                 {

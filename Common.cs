@@ -1,9 +1,9 @@
 ﻿#if UNITY_EDITOR
 
-using Ionic.Zip;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -28,7 +28,9 @@ namespace AltSpace_Unity_Uploader
 
         private static int _usingUnityVersion = 0;
 
-        public static int usingUnityVersion { get
+        public static int usingUnityVersion
+        {
+            get
             {
                 if (_usingUnityVersion == 0)
                 {
@@ -289,7 +291,7 @@ namespace AltSpace_Unity_Uploader
             if (targetFileName == null)
                 targetFileName = Common.OpenFileDialog(Path.Combine(Application.dataPath, tgtRootName + ".zip"), false, true, "zip");
 
-            if(string.IsNullOrEmpty(targetFileName))
+            if (string.IsNullOrEmpty(targetFileName))
             {
                 Debug.Log("Build has been canceled.");
                 return null;
@@ -338,11 +340,7 @@ namespace AltSpace_Unity_Uploader
                     architecture);
             }
 
-            using (ZipFile zipFile = new ZipFile())
-            {
-                zipFile.AddDirectory(tmpSaveLocation);
-                zipFile.Save(targetFileName);
-            }
+            CreateZip(tmpSaveLocation, targetFileName);
 
             Directory.Delete(tmpSaveLocation, true);
             return targetFileName;
@@ -383,7 +381,7 @@ namespace AltSpace_Unity_Uploader
 
         public static void ShowItem(AltspaceListItem item)
         {
-            
+
             if (WebClient.IsAuthenticated)
             {
                 EditorGUILayout.LabelField("Selected " + item.friendlyName + ":");
@@ -401,52 +399,30 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public static bool ExistsOfficialUploader { get => Directory.Exists("Assets/Altspace/Export Assets"); }
-        public static void CleanupOfficialUploader()
+        private static void CreateZip(string sourceDirectory, string outputFile)
         {
-            System.Diagnostics.StackTrace st = new System.Diagnostics.StackTrace(new System.Diagnostics.StackFrame(true));
-            System.Diagnostics.StackFrame sf = st.GetFrame(0);
-
-            string AUURootPath = Path.GetDirectoryName(sf.GetFileName());
-
-            // Deal with shared assets: Move them over to the Altspace Unity Uploader
-            string dotnetzip_src = Path.Combine("Assets", "Plugins");
-            string dotnetzip_dst = Path.Combine(AUURootPath, "DotNetZip");
-            if (Directory.Exists(dotnetzip_src))
-            {
-                if (!File.Exists(Path.Combine(dotnetzip_dst, "Ionic.Zip.Unity.dll")))
-                {
-                    Debug.Log("Moving shared asset DotNetZip...");
-                    foreach (string file in Directory.GetFiles(dotnetzip_src, "Ionic.Zip.Unity.*"))
-                    {
-                        string name = Path.GetFileName(file);
-                        File.Move(file, Path.Combine(dotnetzip_dst, name));
-                    }
-                }
-
-                Directory.Delete(dotnetzip_src, true);
-                File.Delete(dotnetzip_src + ".meta");
+#if UNITY_EDITOR_WIN
+            ZipFile.CreateFromDirectory(sourceDirectory, outputFile);
+#elif UNITY_EDITOR_OSX
+        outputFile = outputFile.Replace("\"", "\\\"");
+        using (Process proc = Process.Start(new ProcessStartInfo() {
+            WorkingDirectory = sourceDirectory,
+            FileName = "/usr/bin/zip",
+            Arguments = $"-r \"{outputFile}\" .",
+            UseShellExecute = false
+        }))
+        {
+            proc.WaitForExit();
+            if (proc.ExitCode != 0) {
+                throw new Exception($"Zip call failed with exit code {proc.ExitCode}");
             }
-
-            string shaders_src = Path.Combine("Assets", "Altspace", "Export Assets", "Shaders");
-            string shaders_dst = Path.Combine(AUURootPath, "Shaders");
-
-            if(Directory.Exists(shaders_src))
-            {
-                if(!Directory.Exists(shaders_dst))
-                {
-                    Directory.Move(shaders_src, shaders_dst);
-                    File.Move(shaders_src + ".meta", shaders_dst + ".meta");
-                }
-            }
-
-            // Now delete the rest of the official uploader
-            Directory.Delete("Assets/Altspace", true);
-            File.Delete("Assets/Altspace.meta");
-            AssetDatabase.Refresh();
         }
-    }
+#else
+        throw new Exception("No zip utility found on this platform!");
+#endif
+        }
 
+    }
 }
 
 #endif // UNITY_EDITOR

@@ -245,6 +245,97 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
+        public class ItemLandingPageRequest : AltspaceRequest
+        {
+            private string _authtoken = null;
+            public string authtoken { get => _authtoken; }
+
+            public ItemLandingPageRequest(string id, string item_singular)
+            {
+                _apiUrl = "/" + item_singular + "s/" + ((id == null)
+                    ? "new"
+                    : id + "/edit");
+                _method = HttpMethod.Get;
+            }
+
+            public override bool Process()
+            {
+                string result;
+                if (!Send(this, out result)) return false;
+
+                string auth_token_pattern = "type=\"hidden\" name=\"authenticity_token\" value=\"";
+                _authtoken = Common.GetWebParameter(result, auth_token_pattern);
+                return true;
+            }
+        }
+
+        public class ItemManageRequest : AltspaceRequest
+        {
+            private string _template_id_pattern;
+            private string _id_result = null;
+
+            public string id_result { get => _id_result; }
+
+            public ItemManageRequest(string authtoken, string id, string item_singular, string name, string description, string imageFileName, string tag_list = null)
+            {
+                string item_fn;
+
+                if (item_singular == "space_template")
+                    item_fn = "template";
+                else if (item_singular == "kit")
+                    item_fn = "kit";
+                else
+                    throw new InvalidDataException(item_singular + ": Not a recognized Altspace item");
+
+                string commit_btn_playload = (id == null)
+                    ? "Create " + item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1)
+                    : "Update";
+
+                _template_id_pattern = "data-method=\"delete\" href=\"/" + item_singular + "s/";
+
+                MultipartFormDataContent inner = new MultipartFormDataContent
+                {
+                    { new StringContent("✓"), "\"utf8\"" },
+                    { new StringContent(authtoken), "\"authenticity_token\"" },
+                    { new StringContent(LoginManager.userid), item_singular + "[current_user_id]" },
+                    { new StringContent(name), item_singular + "[name]" },
+                    { new StringContent(description), item_singular + "[description]" },
+                    { new StringContent(commit_btn_playload), "\"commit\"" },
+                };
+
+                ByteArrayContent imageFileContent;
+                if (!String.IsNullOrEmpty(imageFileName))
+                {
+                    imageFileContent = new ByteArrayContent(File.ReadAllBytes(imageFileName));
+                    inner.Add(imageFileContent, item_singular + "[image]", Path.GetFileName(imageFileName));
+                }
+                else
+                {
+                    imageFileContent = new ByteArrayContent(new byte[0]);
+                    inner.Add(imageFileContent, item_singular + "[image]");
+                }
+
+                if (tag_list != null)
+                    inner.Add(new StringContent(tag_list), item_singular + "[tag_list]");
+
+                _content = inner.ReadAsByteArrayAsync().Result;
+                Headers.ContentType = inner.Headers.ContentType;
+                Headers.ContentDisposition = inner.Headers.ContentDisposition;
+
+                _apiUrl = "/" + item_singular + "s";
+                _method = HttpMethod.Post;
+            }
+
+            public override bool Process()
+            {
+                string result;
+                if (!Send(this, out result)) return false;
+
+                _id_result = Common.GetWebParameter(result, _template_id_pattern);
+                return true;
+            }
+        }
+
         private static CookieContainer _cookieContainer = null;
         private static HttpClient _client = null;
         private static string _authToken;

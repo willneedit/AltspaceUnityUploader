@@ -60,94 +60,26 @@ namespace AltSpace_Unity_Uploader
             else
                 throw new InvalidDataException(item_singular + ": Not a recognized Altspace item");
 
-            string item_plural = item_singular + "s";
             string progress_caption = (id == null)
                 ? "Creating " + item_fn
                 : "Updating " + item_fn;
 
-            string commit_btn_playload = (id == null)
-                ? "Create " + item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1)
-                : "Update";
-
-            string id_result = null;
-            string authtoken;
-
-            string auth_token_pattern = "type=\"hidden\" name=\"authenticity_token\" value=\"";
-            string template_id_pattern = "data-method=\"delete\" href=\"/" + item_plural + "/";
-
             EditorUtility.DisplayProgressBar(progress_caption, "Retrieving landing page...", 0.0f);
 
-            try
+            var ilpr = new WebClient.ItemLandingPageRequest(id, item_singular);
+            if(!ilpr.Process())
             {
-                string landing_uri = (id == null)
-                    ? item_plural + "/new"
-                    : item_plural + "/" + id + "/edit";
-
-                HttpResponseMessage result = LoginManager.GetHttpClient().GetAsync(landing_uri).Result;
-                string content = result.Content.ReadAsStringAsync().Result;
-                result.EnsureSuccessStatusCode();
-
-                authtoken = Common.GetWebParameter(content, auth_token_pattern);
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning(e.Message);
                 EditorUtility.ClearProgressBar();
                 return null;
             }
 
-            EditorUtility.DisplayProgressBar(progress_caption, "Posting new " + item_fn + "...", 0.5f);
+            EditorUtility.DisplayProgressBar(progress_caption, "Posting new item...", 0.5f);
 
-            try
-            {
-                MultipartFormDataContent form = new MultipartFormDataContent();
-                ByteArrayContent imageFileContent = null;
+            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, id, item_singular, name, description, imageFileName, tag_list);
+            imr.Process();
 
-                // Web server is not completely standards compliant and requires the form-data headers in the form
-                // name="itemname", rather than also accepting name=itemname.
-                // .NET HttpClient only uses quotes when necessary. Bummer.
-                form.Add(new StringContent("✓"), "\"utf8\"");
-                form.Add(new StringContent(authtoken), "\"authenticity_token\"");
-                form.Add(new StringContent(name), item_singular + "[name]");
-                form.Add(new StringContent(description), item_singular + "[description]");
-
-                if (!String.IsNullOrEmpty(imageFileName))
-                {
-                    imageFileContent = new ByteArrayContent(File.ReadAllBytes(imageFileName));
-                    form.Add(imageFileContent, item_singular + "[image]", Path.GetFileName(imageFileName));
-                }
-                else
-                {
-                    imageFileContent = new ByteArrayContent(new byte[0]);
-                    form.Add(imageFileContent, item_singular + "[image]");
-                }
-
-                if (tag_list != null)
-                    form.Add(new StringContent(tag_list), item_singular + "[tag_list]");
-
-                form.Add(new StringContent(commit_btn_playload), "\"commit\"");
-
-                HttpResponseMessage result = LoginManager.GetHttpClient().PostAsync(item_plural, form).Result;
-                string content = result.Content.ReadAsStringAsync().Result;
-                result.EnsureSuccessStatusCode();
-
-                id_result = Common.GetWebParameter(content, template_id_pattern);
-
-            }
-            catch (HttpRequestException)
-            {
-                Debug.LogError("HTTP Request error");
-            }
-            catch (FileNotFoundException)
-            {
-                Debug.LogError("Image file not found");
-            }
-            finally
-            {
-                EditorUtility.ClearProgressBar();
-            }
-
-            return id_result;
+            EditorUtility.ClearProgressBar();
+            return imr.id_result;
         }
 
         /// <summary>

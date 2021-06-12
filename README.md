@@ -7,9 +7,7 @@ This is intended as an alternative for the official Unity uploader. For various 
 
 ## Installation
 
-While you can download prepackaged .unitypackages from the most recent release (see https://github.com/willneedit/AltspaceUnityUploader/releases ), you can also use GitHub's "Download .ZIP" feature to obtain a copy of the source and unpack it somewhere into the target project's "Asset" folder in its own directory. No compilation is needed.
-
-Truly daring souls can directly use git to check out this repository into the Unity Project's "Asset" folder and stay abreast with the development of this tool. *A basic understanding on how git works is very much advised*.
+For a quick start, please refer to https://github.com/willneedit/AltspaceUnityUploader/wiki - Installation and update instructions are the very first items which are listed there.
 
 ## Usage
 

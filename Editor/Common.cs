@@ -21,7 +21,7 @@ namespace AltSpace_Unity_Uploader
     public class Common
     {
         public static readonly int currentUnityVersion = 20203;
-        public static readonly int minimumUnityVersion = 20194;
+        public static readonly int minimumUnityVersion = 20203;
 
         public static readonly string relaxedUnityVersion = "2020.3";
         public static readonly string strictUnityVersion = "2020.3.9f1";

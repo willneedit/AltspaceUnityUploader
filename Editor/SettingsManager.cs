@@ -249,6 +249,8 @@ namespace AltSpace_Unity_Uploader
         public static bool initialized = false;
         public static string initErrorMsg = "";
 
+        public static bool urppackageinstalled = false;
+
         public static Settings settings {
             get
             {
@@ -351,6 +353,7 @@ namespace AltSpace_Unity_Uploader
 
         private int m_selectedTab = 0;
 
+        private static UnityEditor.PackageManager.Requests.AddRequest addResponse;
         private static UnityEditor.PackageManager.Requests.RemoveRequest delResponse;
         private static UnityEditor.PackageManager.Requests.ListRequest listResponse;
 
@@ -363,10 +366,42 @@ namespace AltSpace_Unity_Uploader
 
             ProjectSettingsSetter.SetProjectSettings();
             Debug.Log("Build settings adapted.");
-            initialized = true;
+
+            EditorApplication.update += CheckURPInstalled;
 
         }
 
+        private static void PackageListResponse()
+        {
+            if (!listResponse.IsCompleted) return;
+
+            EditorApplication.update -= PackageListResponse;
+
+            foreach(var package in listResponse.Result)
+            {
+                if (package.name == "com.unity.render-pipelines.universal")
+                    urppackageinstalled = true;
+            }
+
+            if(urppackageinstalled)
+            {
+                // Do not initialize if URP update is in progress and there'd be a reload pending.
+                if (!String.IsNullOrEmpty(initErrorMsg = URPInstaller.TriggerStage()))
+                    return;
+            }
+
+            initialized = true;
+        }
+
+        /// <summary>
+        /// Does a minimum check whether URP (post-Sep 15th requirements) is installed or not
+        /// </summary>
+        private static void CheckURPInstalled()
+        {
+            EditorApplication.update -= CheckURPInstalled;
+            listResponse = UnityEditor.PackageManager.Client.List(true);
+            EditorApplication.update += PackageListResponse;
+        }
 
         static SettingsManager()
         {
@@ -394,7 +429,7 @@ namespace AltSpace_Unity_Uploader
                 EditorApplication.update += CheckXRSettings;
             }
             else
-                initialized = true;
+                EditorApplication.update += CheckURPInstalled;
         }
 
         public void OnGUI()
@@ -573,7 +608,30 @@ namespace AltSpace_Unity_Uploader
                     _settings.TmplSetStatic);
             }
 
+            EditorGUILayout.Space(20);
 
+            if (!urppackageinstalled)
+            {
+
+                if (GUILayout.Button("Update to URP"))
+                {
+                    bool result = EditorUtility.DisplayDialog("WARNING!",
+                        "!! THERE IS NO TURNING BACK !!\n\n" +
+                        "1. Did you create a backup?\n" +
+                        "2. Do you know you won't be able to use this project before September 15th in the official, non-BETA client?\n" + 
+                        "3. Shader conversion has its limits - custom shaders likely need some editing.\n" +
+                        "4. Objects WITHOUT a material (= plain white) need to be assigned the provided URP/EmptyMaterial by hand\n" + 
+                        "\n" +
+                        "If you're unsure, please do cancel NOW, right here.", "OK", "Cancel");
+
+                    if (result)
+                        EditorApplication.update += URPInstaller.BeginUpdate;
+                    else
+                        EditorUtility.DisplayDialog("Canceled", "Good choice.", "OK");
+                }
+            }
+            else
+                EditorGUILayout.LabelField("URP package already installed.");
 
             EditorGUILayout.Space(20);
 

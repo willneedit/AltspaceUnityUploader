@@ -28,6 +28,8 @@ namespace AltSpace_Unity_Uploader
 
         private static int _usingUnityVersion = 0;
 
+        private static string _resourceDirectory = null;
+
         public static int usingUnityVersion
         {
             get
@@ -39,6 +41,24 @@ namespace AltSpace_Unity_Uploader
                 }
 
                 return _usingUnityVersion;
+            }
+        }
+
+        public static string resourceDirectory
+        {
+            get
+            {
+                if(String.IsNullOrEmpty(_resourceDirectory))
+                {
+                    // Find ourselves first, then go from there to the Resources folder.
+                    var g = AssetDatabase.FindAssets("t:Script UrpInstaller");
+                    _resourceDirectory = AssetDatabase.GUIDToAssetPath(g[0]);
+                    _resourceDirectory = Path.GetDirectoryName(_resourceDirectory);
+                    _resourceDirectory = Path.GetDirectoryName(_resourceDirectory);
+                    _resourceDirectory = Path.Combine(_resourceDirectory, "Resources");
+                }
+
+                return _resourceDirectory;
             }
         }
         public static void DisplayStatus(string caption, string defaultText, string activeText, string goodText = null)
@@ -397,6 +417,40 @@ namespace AltSpace_Unity_Uploader
 
                 DescribeAssetBundles(item.asset_bundles);
             }
+        }
+
+        /// <summary>
+        /// Install a named resource from a template file within the package
+        /// </summary>
+        /// <param name="resname">Name of the resource</param>
+        /// <param name="tgtpath">(optional) subdirectory within the assets folder</param>
+        /// <returns></returns>
+        public static bool InstallResource(string resName, string tgtPath = null)
+        {
+            string destPath;
+
+            if (!String.IsNullOrEmpty(tgtPath))
+            {
+                Directory.CreateDirectory(Path.Combine("Assets", tgtPath));
+                destPath = Path.Combine("Assets", tgtPath, resName);
+            }
+            else
+                destPath = Path.Combine("Assets", resName);
+
+            if(File.Exists(destPath))
+            {
+                Debug.Log("Skipped copying: " + destPath);
+                return false;
+            }
+
+            string srcPath = Path.Combine(resourceDirectory, resName);
+
+            File.Copy(srcPath + ".in", destPath);
+            if(File.Exists(srcPath + ".meta.in"))
+                File.Copy(srcPath + ".meta.in", destPath + ".meta");
+
+            Debug.Log("Copied " + resName + " to " + destPath);
+            return true;
         }
 
         private static void CreateZip(string sourceDirectory, string outputFile)

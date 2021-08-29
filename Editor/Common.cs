@@ -7,6 +7,8 @@ using System.IO.Compression;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using Process = System.Diagnostics.Process;
+using ProcessStartInfo = System.Diagnostics.ProcessStartInfo;
 
 namespace AltSpace_Unity_Uploader
 {

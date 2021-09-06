@@ -52,12 +52,22 @@ namespace AltSpace_Unity_Uploader
             {
                 if(String.IsNullOrEmpty(_resourceDirectory))
                 {
+                    var p = UnityEditor.PackageManager.PackageInfo.FindForAssembly(Assembly.GetExecutingAssembly());
+                    if (p != null)
+                        _resourceDirectory = Path.Combine("Packages", p.name, "Resources");
+                }
+
+                if(String.IsNullOrEmpty(_resourceDirectory))
+                {
                     // Find ourselves first, then go from there to the Resources folder.
                     var g = AssetDatabase.FindAssets("t:Script UrpInstaller");
-                    _resourceDirectory = AssetDatabase.GUIDToAssetPath(g[0]);
-                    _resourceDirectory = Path.GetDirectoryName(_resourceDirectory);
-                    _resourceDirectory = Path.GetDirectoryName(_resourceDirectory);
-                    _resourceDirectory = Path.Combine(_resourceDirectory, "Resources");
+                    if(g.Length > 0)
+                    {
+                        _resourceDirectory = AssetDatabase.GUIDToAssetPath(g[0]);
+                        _resourceDirectory = Path.GetDirectoryName(_resourceDirectory);
+                        _resourceDirectory = Path.GetDirectoryName(_resourceDirectory);
+                        _resourceDirectory = Path.Combine(_resourceDirectory, "Resources");
+                    }
                 }
 
                 return _resourceDirectory;

@@ -353,10 +353,6 @@ namespace AltSpace_Unity_Uploader
 
         private int m_selectedTab = 0;
 
-        private static UnityEditor.PackageManager.Requests.AddRequest addResponse;
-        private static UnityEditor.PackageManager.Requests.RemoveRequest delResponse;
-        private static UnityEditor.PackageManager.Requests.ListRequest listResponse;
-
         /// <summary>
         /// Check and fix the XR settings. Still using the deprecated XR API.
         /// </summary>
@@ -366,18 +362,8 @@ namespace AltSpace_Unity_Uploader
 
             ProjectSettingsSetter.SetProjectSettings();
             Debug.Log("Build settings adapted.");
-
-            EditorApplication.update += CheckURPInstalled;
-
-        }
-
-        /// <summary>
-        /// Does a minimum check whether URP (post-Sep 15th requirements) is installed or not
-        /// </summary>
-        private static void CheckURPInstalled()
-        {
-            urppackageinstalled = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline != null;
             initialized = true;
+
         }
 
         static SettingsManager()
@@ -405,8 +391,6 @@ namespace AltSpace_Unity_Uploader
                 Debug.Log("Checking build settings...");
                 EditorApplication.update += CheckXRSettings;
             }
-            else
-                EditorApplication.update += CheckURPInstalled;
         }
 
         public void OnGUI()
@@ -587,7 +571,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.Space(20);
 
-            if (!urppackageinstalled)
+            if (UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline == null)
             {
 
                 if (GUILayout.Button("Update to URP"))
@@ -608,7 +592,7 @@ namespace AltSpace_Unity_Uploader
                 }
             }
             else
-                EditorGUILayout.LabelField("URP package already installed.");
+                EditorGUILayout.LabelField("Custom (URP?) Render Pipeline already set.");
 
             EditorGUILayout.Space(20);
 

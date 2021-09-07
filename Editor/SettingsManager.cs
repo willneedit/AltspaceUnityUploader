@@ -371,36 +371,13 @@ namespace AltSpace_Unity_Uploader
 
         }
 
-        private static void PackageListResponse()
-        {
-            if (!listResponse.IsCompleted) return;
-
-            EditorApplication.update -= PackageListResponse;
-
-            foreach(var package in listResponse.Result)
-            {
-                if (package.name == "com.unity.render-pipelines.universal")
-                    urppackageinstalled = true;
-            }
-
-            if(urppackageinstalled)
-            {
-                // Do not initialize if URP update is in progress and there'd be a reload pending.
-                if (!String.IsNullOrEmpty(initErrorMsg = URPInstaller.TriggerStage()))
-                    return;
-            }
-
-            initialized = true;
-        }
-
         /// <summary>
         /// Does a minimum check whether URP (post-Sep 15th requirements) is installed or not
         /// </summary>
         private static void CheckURPInstalled()
         {
-            EditorApplication.update -= CheckURPInstalled;
-            listResponse = UnityEditor.PackageManager.Client.List(true);
-            EditorApplication.update += PackageListResponse;
+            urppackageinstalled = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline != null;
+            initialized = true;
         }
 
         static SettingsManager()

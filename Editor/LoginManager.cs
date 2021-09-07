@@ -18,7 +18,7 @@ namespace AltSpace_Unity_Uploader
     [ExecuteInEditMode]
     public class LoginManager : EditorWindow
     {
-        public static readonly string versionString = "3.0.0-beta1";
+        public static readonly string versionString = "3.0.0-beta2";
 
         private static string _login = "";
         private static string _password = "";

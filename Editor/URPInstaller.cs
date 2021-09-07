@@ -43,7 +43,7 @@ namespace AltSpace_Unity_Uploader
         public static void BeginUpdate()
         {
             EditorApplication.update -= BeginUpdate;
-            UnityEditor.PackageManager.Client.Add("com.unity.render-pipelines.universal");
+            _ = TriggerStage();
         }
 
         // We come here when the URP package is installed, but not yet configured.

@@ -7,11 +7,42 @@ using UnityEngine;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace AltSpace_Unity_Uploader
 {
     public abstract class AltspaceListItem
     {
+        public struct Parameters
+        {
+            public bool isExclusivelyAndroid;
+            public string uploadFileName;
+        }
+        protected class UploadContentMethods
+        {
+            public static HttpContent BundleContent(AltspaceListItem item, Parameters parm)
+            {
+                var zipContents = new ByteArrayContent(File.ReadAllBytes(parm.uploadFileName));
+                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+
+                var colorSpace = PlayerSettings.colorSpace == ColorSpace.Linear ? "linear" : "gamma";
+                var srp = PlayerSettings.stereoRenderingPath == StereoRenderingPath.Instancing
+                    ? (parm.isExclusivelyAndroid ? "spmv" : "spi")
+                    : (PlayerSettings.stereoRenderingPath == StereoRenderingPath.SinglePass)
+                        ? "sp"
+                        : "mp";
+
+                return new MultipartFormDataContent
+                {
+                    { new StringContent("" + Common.usingUnityVersion), item.type + "[game_engine_version]" },
+                    { new StringContent(srp), item.type + "[stereo_render_mode]" },
+                    { new StringContent(colorSpace), item.type + "[color_space]" },
+                    { zipContents, item.type + "[zip]", item.bundleName + ".zip" }
+                };
+
+            }
+        }
         private string _itemPath = null;
 
         public string itemName = null;      // Name of the online Altspace item, raw version. Null if no selection
@@ -118,6 +149,12 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         public abstract void showSelf();
 
+        /// <summary>
+        /// build the form data content necessary to upload the given item
+        /// </summary>
+        /// <returns>HTTP Content, ready to be posted</returns>
+        public abstract HttpContent buildUploadContent(Parameters? parm = null);
+
     }
 
     public class AltspaceKitItem : AltspaceListItem
@@ -187,6 +224,8 @@ namespace AltSpace_Unity_Uploader
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 
         public override bool exists => isSet && Directory.Exists(itemPath);
+
+        public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.BundleContent(this, parm.Value);
     }
 
     public class AltspaceTemplateItem : AltspaceListItem
@@ -262,6 +301,8 @@ namespace AltSpace_Unity_Uploader
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 
         public override bool exists => isSet && File.Exists(itemPath);
+
+        public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.BundleContent(this, parm.Value);
     }
 }
 

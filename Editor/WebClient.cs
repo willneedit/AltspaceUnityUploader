@@ -208,24 +208,10 @@ namespace AltSpace_Unity_Uploader
         {
             public UploadRequest(AltspaceListItem item, string uploadFileName, bool isExclusivelyAndroid = false)
             {
-                var zipContents = new ByteArrayContent(File.ReadAllBytes(uploadFileName));
-                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
-
-                var colorSpace = PlayerSettings.colorSpace == ColorSpace.Linear ? "linear" : "gamma";
-                var srp = PlayerSettings.stereoRenderingPath == StereoRenderingPath.Instancing
-                    ? (isExclusivelyAndroid ? "spmv" : "spi")
-                    : (PlayerSettings.stereoRenderingPath == StereoRenderingPath.SinglePass)
-                        ? "sp"
-                        : "mp";
-
-                var inner = new MultipartFormDataContent
-                {
-                    { new StringContent("" + Common.usingUnityVersion), item.type + "[game_engine_version]" },
-                    { new StringContent(srp), item.type + "[stereo_render_mode]" },
-                    { new StringContent(colorSpace), item.type + "[color_space]" },
-                    { zipContents, item.type + "[zip]", item.bundleName + ".zip" }
-                };
-
+                var inner = item.buildUploadContent(new AltspaceListItem.Parameters {
+                    uploadFileName = uploadFileName,
+                    isExclusivelyAndroid = isExclusivelyAndroid
+                });
                 _content = inner.ReadAsByteArrayAsync().Result;
                 Headers.ContentType = inner.Headers.ContentType;
                 Headers.ContentDisposition = inner.Headers.ContentDisposition;

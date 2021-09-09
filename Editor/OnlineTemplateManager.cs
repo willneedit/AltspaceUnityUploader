@@ -41,25 +41,7 @@ namespace AltSpace_Unity_Uploader
                     "Tag List",
                     "Comma separated list of tags you'd wish to enter for your template."
                     ), tag_list);
-                EditorGUILayout.Space(10);
-
-                EditorGUILayout.BeginHorizontal();
-                if (templateName != "")
-                {
-                    if (GUILayout.Button("Create!"))
-                    {
-                        m_commitAction();
-                        Close();
-                    }
-                }
-
-                if (GUILayout.Button("Abort"))
-                {
-                    Close();
-                }
-
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.EndVertical();
+                Trailer(() => templateName != "");
             }
         }
 

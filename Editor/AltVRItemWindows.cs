@@ -12,9 +12,34 @@ namespace AltSpace_Unity_Uploader
 
     public class CreateWindowBase : EditorWindow
     {
+        protected delegate bool check_fn();
+
         protected Action m_commitAction;
 
         public void SetCommitAction(Action c) { m_commitAction = c; }
+        protected void Trailer(check_fn cc) {
+            EditorGUILayout.Space(10);
+
+            EditorGUILayout.BeginHorizontal();
+            if (cc())
+            {
+                if (GUILayout.Button("Create!"))
+                {
+                    m_commitAction();
+                    Close();
+                }
+            }
+
+            if (GUILayout.Button("Abort"))
+            {
+                Close();
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+        }
+
+
     }
     public class AltVRItemWidgets
     {

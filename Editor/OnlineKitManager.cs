@@ -31,25 +31,7 @@ namespace AltSpace_Unity_Uploader
                     "Optional. An image to be shown in the overview"),
                     false, false, imageFile);
 
-                EditorGUILayout.Space(10);
-
-                EditorGUILayout.BeginHorizontal();
-                if (kitName != "")
-                {
-                    if (GUILayout.Button("Create!"))
-                    {
-                        m_commitAction();
-                        Close();
-                    }
-                }
-
-                if (GUILayout.Button("Abort"))
-                {
-                    Close();
-                }
-
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.EndVertical();
+                Trailer(() => kitName != "");
             }
         }
 

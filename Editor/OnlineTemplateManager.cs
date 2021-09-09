@@ -11,7 +11,7 @@ namespace AltSpace_Unity_Uploader
 {
     [InitializeOnLoad]
     [ExecuteInEditMode]
-    public class OnlineTemplateManager : EditorWindow
+    public class OnlineTemplateManager : OnlineManagerBase<AltspaceTemplateItem, templateJSON>
     {
         private class CreateTemplateWindow : CreateWindowBase
         {
@@ -44,10 +44,6 @@ namespace AltSpace_Unity_Uploader
                 Trailer(() => templateName != "");
             }
         }
-
-
-        private static Dictionary<string, AltspaceTemplateItem> _known_templates = new Dictionary<string, AltspaceTemplateItem>();
-        private static AltspaceTemplateItem _selected_template = new AltspaceTemplateItem();
 
         public static void ShowTemplate(AltspaceTemplateItem tmpl)
         {
@@ -93,42 +89,9 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public static void ResetContents()
-        {
-            OnlineTemplateManager window = GetWindow<OnlineTemplateManager>();
-            window.Close();
-            _known_templates = new Dictionary<string, AltspaceTemplateItem>();
-            _selected_template = new AltspaceTemplateItem();
-        }
-
-        private static void EnterTemplateData(templateJSON tmpl)
-        {
-            if (tmpl.asset_bundle_scenes.Count > 0 && tmpl.asset_bundle_scenes[0].user_id != LoginManager.userid) return;
-
-            _known_templates.Remove(tmpl.space_template_id);
-            AltspaceTemplateItem new_item = new AltspaceTemplateItem();
-            new_item.importAltVRItem(tmpl);
-            _known_templates.Add(tmpl.space_template_id, new_item);
-        }
-
-        private static bool LoadSingleTemplate(string template_id)
-        {
-            templateJSON tmpl = LoginManager.LoadSingleAltVRItem<templateJSON>(template_id);
-            if(tmpl != null && !string.IsNullOrEmpty(tmpl.activity_name))
-            {
-                EnterTemplateData(tmpl);
-                return true;
-            }
-            return false;
-        }
-
         public static void ManageTemplates()
         {
-            AltVRItemWidgets.ManageItem(
-                _selected_template,
-                () => GetWindow<OnlineTemplateManager>().Show(),
-                (string id) => { LoadSingleTemplate(id); _selected_template = _known_templates[id]; },
-                "You need to set the scene name\nbefore you can build templates.");
+            ManageItems<OnlineTemplateManager>("You need to set the scene name\nbefore you can build templates.");
         }
 
 
@@ -136,14 +99,7 @@ namespace AltSpace_Unity_Uploader
 
         public void OnGUI()
         {
-            AltVRItemWidgets.BuildSelectorList(_known_templates.Values, CreateTemplate, LoadTemplates, SelectTemplate, ref m_scrollPosition);
-
-            void SelectTemplate(string id)
-            {
-                _selected_template = _known_templates[id];
-                this.Close();
-                GetWindow<LoginManager>().Repaint();
-            }
+            AltVRItemWidgets.BuildSelectorList(_known_items.Values, CreateTemplate, LoadTemplates, SelectItem, ref m_scrollPosition);
 
             void CreateTemplate()
             {
@@ -158,13 +114,13 @@ namespace AltSpace_Unity_Uploader
                             tag_list = window.tag_list
                         };
 
-                        if (new_item.updateAltVRItem() && LoadSingleTemplate(new_item.id))
+                        if (new_item.updateAltVRItem() && LoadSingleItem(new_item.id))
                         {
-                            _selected_template = _known_templates[new_item.id];
-                            _selected_template.itemPath = Path.Combine(
+                            _selected_item = _known_items[new_item.id];
+                            _selected_item.itemPath = Path.Combine(
                                 "Assets",
                                 "Scenes",
-                                Common.SanitizeFileName(_selected_template.itemName) + ".unity");
+                                Common.SanitizeFileName(_selected_item.itemName) + ".unity");
 
                             this.Close();
                             GetWindow<LoginManager>().Repaint();
@@ -178,10 +134,11 @@ namespace AltSpace_Unity_Uploader
                 LoginManager.LoadAltVRItems((templatesJSON content) =>
                 {
                     foreach (templateJSON tmpl in content.space_templates)
-                        EnterTemplateData(tmpl);
+                        if (tmpl.asset_bundle_scenes.Count > 0 && tmpl.asset_bundle_scenes[0].user_id == LoginManager.userid)
+                            EnterItemData(tmpl);
                 });
 
-                if (_known_templates.Count == 0)
+                if (_known_items.Count == 0)
                     ShowNotification(new GUIContent("No own templates"), 5.0f);
 
             }

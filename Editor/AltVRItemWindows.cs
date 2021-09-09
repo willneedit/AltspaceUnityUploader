@@ -41,6 +41,60 @@ namespace AltSpace_Unity_Uploader
 
 
     }
+
+    public abstract class OnlineManagerBase<T, U> : EditorWindow where T: AltspaceListItem, new() where U: ITypedAsset, new()
+    {
+        protected static Dictionary<string, T> _known_items = new Dictionary<string, T>();
+        protected static T _selected_item = new T();
+
+        public void SelectItem(string id)
+        {
+            _selected_item = _known_items[id];
+            this.Close();
+            GetWindow<LoginManager>().Repaint();
+        }
+
+        public static void ResetContents<V>() where V : OnlineManagerBase<T, U>
+        {
+            GetWindow<V>().Close();
+            _known_items = new Dictionary<string, T>();
+            _selected_item = new T();
+        }
+
+        protected static void EnterItemData(U itemJSON)
+        {
+            if(!String.IsNullOrEmpty(itemJSON.assetName))
+            {
+                _known_items.Remove(itemJSON.assetId);
+                T new_item = new T();
+                new_item.importAltVRItem(itemJSON);
+                _known_items.Add(itemJSON.assetId, new_item);
+            }
+        }
+
+        protected static bool LoadSingleItem(string item_id)
+        {
+            U itemJSON = LoginManager.LoadSingleAltVRItem<U>(item_id);
+            if(itemJSON != null && !String.IsNullOrEmpty(itemJSON.assetName))
+            {
+                EnterItemData(itemJSON);
+                return true;
+            }
+
+            return false;
+        }
+
+        protected static void ManageItems<V>(string message) where V: OnlineManagerBase<T, U>
+        {
+
+            AltVRItemWidgets.ManageItem(
+                _selected_item,
+                () => GetWindow<V>().Show(),
+                (string id) => { LoadSingleItem(id); _selected_item = _known_items[id]; },
+                message);
+        }
+    }
+
     public class AltVRItemWidgets
     {
         private static bool m_showWithAssets = false;

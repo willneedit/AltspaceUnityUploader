@@ -9,7 +9,7 @@ namespace AltSpace_Unity_Uploader
 {
     [InitializeOnLoad]
     [ExecuteInEditMode]
-    public class OnlineKitManager : EditorWindow
+    public class OnlineKitManager : OnlineManagerBase<AltspaceKitItem, kitJSON>
     {
         private class CreateKitWindow : CreateWindowBase
         {
@@ -36,10 +36,7 @@ namespace AltSpace_Unity_Uploader
         }
 
 
-        private static Dictionary<string, AltspaceKitItem> _known_kits = new Dictionary<string, AltspaceKitItem>();
-        private static AltspaceKitItem _selected_kit = new AltspaceKitItem();
-
-        public static string kitRoot => _selected_kit.itemPath;
+        public static string kitRoot => _selected_item.itemPath;
 
         public static void ShowKit(AltspaceKitItem kit)
         {
@@ -78,43 +75,9 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public static void ResetContents()
-        {
-            OnlineKitManager window = GetWindow<OnlineKitManager>();
-            window.Close();
-            _known_kits = new Dictionary<string, AltspaceKitItem>();
-            _selected_kit = new AltspaceKitItem();
-        }
-
-        private static void EnterKitData(kitJSON kit)
-        {
-            if (kit.name != null && kit.user_id == LoginManager.userid)
-            {
-                _known_kits.Remove(kit.kit_id);
-                AltspaceKitItem new_item = new AltspaceKitItem();
-                new_item.importAltVRItem(kit);
-                _known_kits.Add(kit.kit_id, new_item);
-            }
-        }
-
-        private static bool LoadSingleKit(string kit_id)
-        {
-            kitJSON kit = LoginManager.LoadSingleAltVRItem<kitJSON>(kit_id);
-            if(kit != null && !string.IsNullOrEmpty(kit.name))
-            {
-                EnterKitData(kit);
-                return true;
-            }
-            return false;
-        }
-
         public static void ManageKits()
         {
-            AltVRItemWidgets.ManageItem(
-                _selected_kit,
-                () => GetWindow<OnlineKitManager>().Show(),
-                (string id) => { LoadSingleKit(id); _selected_kit = _known_kits[id]; },
-                "You need to set a directory before you can build kits.");
+            ManageItems<OnlineKitManager>("You need to set a directory before you can build kits.");
         }
 
         private Vector2 m_scrollPosition;
@@ -122,14 +85,7 @@ namespace AltSpace_Unity_Uploader
         public void OnGUI()
         {
 
-            AltVRItemWidgets.BuildSelectorList(_known_kits.Values, CreateKit, LoadKits, SelectKit, ref m_scrollPosition);
-
-            void SelectKit(string id)
-            {
-                _selected_kit = _known_kits[id];
-                this.Close();
-                GetWindow<LoginManager>().Repaint();
-            }
+            AltVRItemWidgets.BuildSelectorList(_known_items.Values, CreateKit, LoadKits, SelectItem, ref m_scrollPosition);
 
             void CreateKit()
             {
@@ -143,12 +99,12 @@ namespace AltSpace_Unity_Uploader
                             imageFile = window.imageFile
                         };
 
-                        if (new_item.updateAltVRItem() && LoadSingleKit(new_item.id))
+                        if (new_item.updateAltVRItem() && LoadSingleItem(new_item.id))
                         {
-                            _selected_kit = _known_kits[new_item.id];
-                            _selected_kit.itemPath = Path.Combine(
+                            _selected_item = _known_items[new_item.id];
+                            _selected_item.itemPath = Path.Combine(
                                 SettingsManager.settings.KitsRootDirectory,
-                                Common.SanitizeFileName(_selected_kit.itemName));
+                                Common.SanitizeFileName(_selected_item.itemName));
 
                             this.Close();
                             GetWindow<LoginManager>().Repaint();
@@ -162,10 +118,11 @@ namespace AltSpace_Unity_Uploader
                 LoginManager.LoadAltVRItems((kitsJSON content) =>
                 {
                     foreach (kitJSON kit in content.kits)
-                        EnterKitData(kit);
+                        if(kit.user_id == LoginManager.userid)
+                            EnterItemData(kit);
                 });
 
-                if (_known_kits.Count == 0)
+                if (_known_items.Count == 0)
                     ShowNotification(new GUIContent("No own kits"), 5.0f);
 
             }

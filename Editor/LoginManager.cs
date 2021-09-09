@@ -283,8 +283,8 @@ namespace AltSpace_Unity_Uploader
 
         private void DoLogout()
         {
-            OnlineKitManager.ResetContents();
-            OnlineTemplateManager.ResetContents();
+            OnlineKitManager.ResetContents<OnlineKitManager>();
+            OnlineTemplateManager.ResetContents<OnlineTemplateManager>();
             _userEntry = null;
 
             var req = new WebClient.LogoutRequest();

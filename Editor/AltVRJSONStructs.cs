@@ -13,6 +13,8 @@ namespace AltSpace_Unity_Uploader
     public interface ITypedAsset
     {
         string assetType { get; }
+        string assetId { get; }
+        string assetName { get; }
     }
 
     [Serializable]
@@ -85,6 +87,8 @@ namespace AltSpace_Unity_Uploader
         public List<assetBundleJSON> asset_bundles = new List<assetBundleJSON>();
 
         public string assetType { get => "kit";  }
+        public string assetId { get => kit_id; }
+        public string assetName { get => name; }
     }
 
     /// <summary>
@@ -99,6 +103,8 @@ namespace AltSpace_Unity_Uploader
         public paginationJSON pages { get => pagination; }
 
         public string assetType { get => "kit"; }
+        public string assetId { get => null; }
+        public string assetName { get => null; }
     }
 
 
@@ -126,12 +132,14 @@ namespace AltSpace_Unity_Uploader
         public string name = null;                  // friendly name (again)
 
         public string assetType { get => "space_template"; }
-}
+        public string assetId { get => space_template_id; }
+        public string assetName { get => name; }
+    }
 
-/// <summary>
-/// A single page of templates
-/// </summary>
-[Serializable]
+    /// <summary>
+    /// A single page of templates
+    /// </summary>
+    [Serializable]
     public class templatesJSON : IPaginated, ITypedAsset
     {
         public List<templateJSON> space_templates = new List<templateJSON>();
@@ -140,6 +148,8 @@ namespace AltSpace_Unity_Uploader
         public paginationJSON pages { get => pagination; }
 
         public string assetType { get => "space_template"; }
+        public string assetId { get => null; }
+        public string assetName { get => null; }
     }
 
     /// <summary>
@@ -155,6 +165,8 @@ namespace AltSpace_Unity_Uploader
         public string updated_at;                   // Last modification date
 
         public string assetType { get => "model"; }
+        public string assetId { get => id; }
+        public string assetName { get => name; }
     }
 
     /// <summary>
@@ -169,5 +181,7 @@ namespace AltSpace_Unity_Uploader
         public paginationJSON pages { get => pagination; }
 
         public string assetType { get => "model"; }
+        public string assetId { get => null; }
+        public string assetName { get => null; }
     }
 }

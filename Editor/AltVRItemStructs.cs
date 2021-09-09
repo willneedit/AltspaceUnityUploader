@@ -138,6 +138,8 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         public abstract string suggestedAssetPath { get; }
 
+        public virtual void importAltVRItem<U>(U json) { }
+
         /// <summary>
         /// Start the appropiate user interaction to choose the asset for the given Altspace item
         /// </summary>
@@ -183,8 +185,10 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public void importAltVRItem(kitJSON json)
+        public override void importAltVRItem<U>(U _json)
         {
+            kitJSON json = _json as kitJSON;
+
             itemName = json.name;
             id = json.kit_id;
             description = null; // json.description;
@@ -257,8 +261,9 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public void importAltVRItem(templateJSON json)
+        public override void importAltVRItem<U>(U _json)
         {
+            templateJSON json = _json as templateJSON;
             itemName = json.name;
             id = json.space_template_id;
             description = json.description;

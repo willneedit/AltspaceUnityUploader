@@ -13,6 +13,57 @@ namespace AltSpace_Unity_Uploader
     [ExecuteInEditMode]
     public class OnlineTemplateManager : EditorWindow
     {
+        private class CreateTemplateWindow : CreateWindowBase
+        {
+            public string templateName = "";
+            public string description = "";
+            public string imageFile = "";
+            public string tag_list = "";
+
+            public void OnGUI()
+            {
+
+                EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
+
+                templateName = EditorGUILayout.TextField(new GUIContent(
+                    "Template Name",
+                    "The name of the template"
+                    ), templateName);
+                EditorGUILayout.LabelField(new GUIContent("Template Description", "A description for the template"));
+                description = EditorGUILayout.TextArea(description);
+
+                imageFile = Common.FileSelectionField(new GUIContent(
+                    "Image File",
+                    "Optional. An image to be shown in the overview"),
+                    false, false, imageFile);
+
+                tag_list = EditorGUILayout.TextField(new GUIContent(
+                    "Tag List",
+                    "Comma separated list of tags you'd wish to enter for your template."
+                    ), tag_list);
+                EditorGUILayout.Space(10);
+
+                EditorGUILayout.BeginHorizontal();
+                if (templateName != "")
+                {
+                    if (GUILayout.Button("Create!"))
+                    {
+                        m_commitAction();
+                        Close();
+                    }
+                }
+
+                if (GUILayout.Button("Abort"))
+                {
+                    Close();
+                }
+
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndVertical();
+            }
+        }
+
+
         private static Dictionary<string, AltspaceTemplateItem> _known_templates = new Dictionary<string, AltspaceTemplateItem>();
         private static AltspaceTemplateItem _selected_template = new AltspaceTemplateItem();
 
@@ -115,30 +166,29 @@ namespace AltSpace_Unity_Uploader
             void CreateTemplate()
             {
                 CreateTemplateWindow window = CreateInstance<CreateTemplateWindow>();
-                window.ShowModalUtility();
-                if (window.rc)
-                {
-                    AltspaceTemplateItem new_item = new AltspaceTemplateItem()
+                window.SetCommitAction(() =>
                     {
-                        itemName = window.templateName,
-                        description = window.description,
-                        imageFile = window.imageFile,
-                        tag_list = window.tag_list
-                    };
+                        AltspaceTemplateItem new_item = new AltspaceTemplateItem()
+                        {
+                            itemName = window.templateName,
+                            description = window.description,
+                            imageFile = window.imageFile,
+                            tag_list = window.tag_list
+                        };
 
-                    if (new_item.updateAltVRItem() && LoadSingleTemplate(new_item.id))
-                    {
-                        _selected_template = _known_templates[new_item.id];
-                        _selected_template.itemPath = Path.Combine(
-                            "Assets",
-                            "Scenes",
-                            Common.SanitizeFileName(_selected_template.itemName) + ".unity");
+                        if (new_item.updateAltVRItem() && LoadSingleTemplate(new_item.id))
+                        {
+                            _selected_template = _known_templates[new_item.id];
+                            _selected_template.itemPath = Path.Combine(
+                                "Assets",
+                                "Scenes",
+                                Common.SanitizeFileName(_selected_template.itemName) + ".unity");
 
-                        this.Close();
-                        GetWindow<LoginManager>().Repaint();
-                    }
-                }
-
+                            this.Close();
+                            GetWindow<LoginManager>().Repaint();
+                        }
+                    });
+                window.Show();
             }
 
             void LoadTemplates()

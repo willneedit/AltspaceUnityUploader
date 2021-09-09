@@ -11,6 +11,48 @@ namespace AltSpace_Unity_Uploader
     [ExecuteInEditMode]
     public class OnlineKitManager : EditorWindow
     {
+        private class CreateKitWindow : CreateWindowBase
+        {
+            public string kitName = "";
+            public string description = "";
+            public string imageFile = "";
+
+            public void OnGUI()
+            {
+
+                EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
+
+                kitName = EditorGUILayout.TextField(new GUIContent("Kit Name", "The name of the kit"), kitName);
+                EditorGUILayout.LabelField(new GUIContent("Kit Description", "A description for the kit"));
+                description = EditorGUILayout.TextArea(description);
+
+                imageFile = Common.FileSelectionField(new GUIContent(
+                    "Image File",
+                    "Optional. An image to be shown in the overview"),
+                    false, false, imageFile);
+
+                EditorGUILayout.Space(10);
+
+                EditorGUILayout.BeginHorizontal();
+                if (kitName != "")
+                {
+                    if (GUILayout.Button("Create!"))
+                    {
+                        m_commitAction();
+                        Close();
+                    }
+                }
+
+                if (GUILayout.Button("Abort"))
+                {
+                    Close();
+                }
+
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndVertical();
+            }
+        }
+
 
         private static Dictionary<string, AltspaceKitItem> _known_kits = new Dictionary<string, AltspaceKitItem>();
         private static AltspaceKitItem _selected_kit = new AltspaceKitItem();
@@ -110,27 +152,27 @@ namespace AltSpace_Unity_Uploader
             void CreateKit()
             {
                 CreateKitWindow window = CreateInstance<CreateKitWindow>();
-                window.ShowModalUtility();
-                if (window.rc)
-                {
-                    AltspaceKitItem new_item = new AltspaceKitItem()
+                window.SetCommitAction(() =>
                     {
-                        itemName = window.kitName,
-                        description = window.description,
-                        imageFile = window.imageFile
-                    };
+                        AltspaceKitItem new_item = new AltspaceKitItem()
+                        {
+                            itemName = window.kitName,
+                            description = window.description,
+                            imageFile = window.imageFile
+                        };
 
-                    if (new_item.updateAltVRItem() && LoadSingleKit(new_item.id))
-                    {
-                        _selected_kit = _known_kits[new_item.id];
-                        _selected_kit.itemPath = Path.Combine(
-                            SettingsManager.settings.KitsRootDirectory,
-                            Common.SanitizeFileName(_selected_kit.itemName));
+                        if (new_item.updateAltVRItem() && LoadSingleKit(new_item.id))
+                        {
+                            _selected_kit = _known_kits[new_item.id];
+                            _selected_kit.itemPath = Path.Combine(
+                                SettingsManager.settings.KitsRootDirectory,
+                                Common.SanitizeFileName(_selected_kit.itemName));
 
-                        this.Close();
-                        GetWindow<LoginManager>().Repaint();
-                    }
-                }
+                            this.Close();
+                            GetWindow<LoginManager>().Repaint();
+                        }
+                    });
+                window.Show();
             }
 
             void LoadKits()

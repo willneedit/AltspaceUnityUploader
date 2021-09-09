@@ -10,6 +10,11 @@ namespace AltSpace_Unity_Uploader
         paginationJSON pages { get; }
     }
 
+    public interface ITypedAsset
+    {
+        string assetType { get; }
+    }
+
     [Serializable]
     public class userPwCredentialsJSON
     {
@@ -71,25 +76,29 @@ namespace AltSpace_Unity_Uploader
     /// A single kit
     /// </summary>
     [Serializable]
-    public class kitJSON
+    public class kitJSON : ITypedAsset
     {
         public string name = null;
         public bool is_featured = false;
         public string kit_id = null;
         public string user_id = null;
         public List<assetBundleJSON> asset_bundles = new List<assetBundleJSON>();
+
+        public string assetType { get => "kit";  }
     }
 
     /// <summary>
     /// A single page of kits
     /// </summary>
     [Serializable]
-    public class kitsJSON : IPaginated
+    public class kitsJSON : IPaginated, ITypedAsset
     {
         public List<kitJSON> kits = new List<kitJSON>();
         public paginationJSON pagination = new paginationJSON();
 
-        public paginationJSON pages { get { return pagination; } }
+        public paginationJSON pages { get => pagination; }
+
+        public string assetType { get => "kit"; }
     }
 
 
@@ -107,7 +116,7 @@ namespace AltSpace_Unity_Uploader
     /// A single template
     /// </summary>
     [Serializable]
-    public class templateJSON
+    public class templateJSON : ITypedAsset
     {
         public string space_template_sid = null;    // Long sid
         public string activity_name = null;         // friendly name
@@ -115,17 +124,50 @@ namespace AltSpace_Unity_Uploader
         public string space_template_id = null;     // ID used in URLs
         public List<assetBundleSceneJSON> asset_bundle_scenes = new List<assetBundleSceneJSON>(); // asset Bundles coined to different users? Strange.
         public string name = null;                  // friendly name (again)
-    }
 
-    /// <summary>
-    /// A single page of templates
-    /// </summary>
-    [Serializable]
-    public class templatesJSON : IPaginated
+        public string assetType { get => "space_template"; }
+}
+
+/// <summary>
+/// A single page of templates
+/// </summary>
+[Serializable]
+    public class templatesJSON : IPaginated, ITypedAsset
     {
         public List<templateJSON> space_templates = new List<templateJSON>();
         public paginationJSON pagination = new paginationJSON();
 
-        public paginationJSON pages { get { return pagination; } }
+        public paginationJSON pages { get => pagination; }
+
+        public string assetType { get => "space_template"; }
+    }
+
+    /// <summary>
+    /// A single GLTF model
+    /// </summary>
+    [Serializable]
+    public class modelJSON : ITypedAsset
+    {
+        public string name = null;                  // The name
+        public string id = null;                    // The ID
+        public string gltf_url = null;              // The URL of the GLB file
+        public string created_at;                   // Creation date
+        public string updated_at;                   // Last modification date
+
+        public string assetType { get => "model"; }
+    }
+
+    /// <summary>
+    /// A single page of GLTF models
+    /// </summary>
+    [Serializable]
+    public class modelsJSON : IPaginated, ITypedAsset
+    {
+        public List<modelJSON> models = new List<modelJSON>();
+        public paginationJSON pagination = new paginationJSON();
+
+        public paginationJSON pages { get => pagination; }
+
+        public string assetType { get => "model"; }
     }
 }

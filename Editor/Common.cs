@@ -421,14 +421,26 @@ namespace AltSpace_Unity_Uploader
                 DisplayStatus("  ID:", "none", item.id);
             }
 
-            if (item.isSelected)
+            if(item.isSelected)
             {
-                EditorGUILayout.Space(10);
+                if (item.asset_bundles != null)
+                {
+                    EditorGUILayout.Space(10);
 
-                EditorGUILayout.LabelField(item.friendlyName.Capitalize() + " contents:");
+                    EditorGUILayout.LabelField(item.friendlyName.Capitalize() + " contents:");
 
-                DescribeAssetBundles(item.asset_bundles);
+                    DescribeAssetBundles(item.asset_bundles);
+                }
+                else if(!String.IsNullOrEmpty(item.item_url))
+                {
+                    EditorGUILayout.Space(10);
+
+                    EditorGUILayout.LabelField(item.friendlyName.Capitalize() + " URL:");
+
+                    EditorGUILayout.LabelField(item.item_url);
+                }
             }
+
         }
 
         /// <summary>

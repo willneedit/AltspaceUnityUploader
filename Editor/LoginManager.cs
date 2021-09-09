@@ -88,7 +88,7 @@ namespace AltSpace_Unity_Uploader
         /// <typeparam name="T">the data type in question</typeparam>
         /// <param name="item_id">The ID of the item within the given scope</param>
         /// <returns>The item, or null</returns>
-        public static T LoadSingleAltVRItem<T>(string item_id)
+        public static T LoadSingleAltVRItem<T>(string item_id) where T: ITypedAsset, new()
         {
             var sar = new WebClient.SingleAssetRequest<T>(item_id);
             if (!sar.Process()) return default;
@@ -96,7 +96,7 @@ namespace AltSpace_Unity_Uploader
             return sar.singleAsset;
         }
 
-        public static void LoadAltVRItems<T>(Action<T> callback)
+        public static void LoadAltVRItems<T>(Action<T> callback) where T: ITypedAsset, new()
         {
             int currentPage = 0;
             int maxPage = 1;

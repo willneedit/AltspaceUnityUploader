@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System;
 
 namespace AltSpace_Unity_Uploader
 {
@@ -42,12 +43,25 @@ namespace AltSpace_Unity_Uploader
                 };
 
             }
+
+            public static HttpContent GLTFContent(AltspaceListItem item)
+            {
+                var zipContents = new ByteArrayContent(File.ReadAllBytes(item.itemPath));
+                zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+
+                return new MultipartFormDataContent
+                {
+                    { zipContents, item.type + "[gltf]", item.bundleName + ".glb" }
+                };
+            }
         }
         private string _itemPath = null;
 
         public string itemName = null;      // Name of the online Altspace item, raw version. Null if no selection
         public string id = null;            // ID. Null if no selection
-        public List<assetBundleJSON> asset_bundles = null;         // Asset Bundles connected to the Altspace Item
+
+        public List<assetBundleJSON> asset_bundles = null;  // (Unity Assets) Asset Bundles connected to the Altspace Item
+        public string item_url = null;                      // (Flat File Assets) URL to download the asset from
 
         public string imageFile = null;
         public string description = null;
@@ -303,6 +317,63 @@ namespace AltSpace_Unity_Uploader
         public override bool exists => isSet && File.Exists(itemPath);
 
         public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.BundleContent(this, parm.Value);
+    }
+
+    public class AltspaceModelItem : AltspaceListItem
+    {
+
+        public override string suggestedAssetPath
+        {
+            get
+            {
+                string fileName = id + "_" + Common.SanitizeFileName(itemName);
+                string fullName = Path.Combine("Assets", "Models", fileName + ".glb");
+                return (File.Exists(fullName)) ? fullName : null;
+            }
+        }
+
+        public void importAltVRItem(modelJSON json)
+        {
+            itemName = json.name;
+            id = json.id;
+            item_url = json.gltf_url;
+            tag_list = null;
+
+            itemPath = SettingsManager.LookupKnownItem(type, id);
+            if (itemPath == null)
+                itemPath = suggestedAssetPath;
+        }
+
+        public override void chooseAssetPath()
+        {
+            string fileName = id + "_" + Common.SanitizeFileName(itemName);
+            itemPath = Path.Combine("Assets", "Models", fileName + ".glb");
+        }
+
+        public override void createAsset()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool buildAssetBundle(List<BuildTarget> architectures, bool includeScreenshots = false, string targetFileName = null)
+        {
+            // There's nothing to build.
+            return true;
+        }
+
+        public override void showSelf() => Common.ShowItem(this);
+
+        public override string type => "model";
+
+        public override string friendlyName => "model";
+
+        public override string pluralName => "models";
+
+        public override bool isSet => !string.IsNullOrEmpty(itemPath);
+
+        public override bool exists => isSet && File.Exists(itemPath);
+
+        public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.GLTFContent(this);
     }
 }
 

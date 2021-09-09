@@ -153,7 +153,7 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public class SingleAssetRequest<T> : AltspaceRequest
+        public class SingleAssetRequest<T> : AltspaceRequest where T: ITypedAsset, new()
         {
             private T _singleAsset;
 
@@ -175,7 +175,7 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public class PagedAssetsRequest<T> : AltspaceRequest
+        public class PagedAssetsRequest<T> : AltspaceRequest where T : ITypedAsset, new()
         {
             private T _pagedAsset;
             private int _page = 0;
@@ -212,6 +212,17 @@ namespace AltSpace_Unity_Uploader
                     uploadFileName = uploadFileName,
                     isExclusivelyAndroid = isExclusivelyAndroid
                 });
+                _content = inner.ReadAsByteArrayAsync().Result;
+                Headers.ContentType = inner.Headers.ContentType;
+                Headers.ContentDisposition = inner.Headers.ContentDisposition;
+
+                _apiUrl = "/api/" + item.type + "s/" + item.id + ".json";
+                _method = HttpMethod.Put;
+            }
+
+            public UploadRequest(AltspaceListItem item)
+            {
+                var inner = item.buildUploadContent();
                 _content = inner.ReadAsByteArrayAsync().Result;
                 Headers.ContentType = inner.Headers.ContentType;
                 Headers.ContentDisposition = inner.Headers.ContentDisposition;
@@ -334,18 +345,12 @@ namespace AltSpace_Unity_Uploader
         /// <summary>
         /// Derive the name needed for the API URL from the type of the JSON structure we expect to get.
         /// </summary>
-        /// <typeparam name="T">kitJSON, kitsJSON; templateJSON, templatesJSON</typeparam>
-        /// <returns>"kits" or "space_templates"</returns>
-        private static string DeriveWebTypeName<T>()
+        /// <typeparam name="T">any of ITypedAsset</typeparam>
+        /// <returns>"kits", "space_templates" ...</returns>
+        private static string DeriveWebTypeName<T>() where T: ITypedAsset, new()
         {
-            string item_type_plural;
-            if (typeof(T) == typeof(kitsJSON) || typeof(T) == typeof(kitJSON))
-                item_type_plural = "kits";
-            else if (typeof(T) == typeof(templatesJSON) || typeof(T) == typeof(templateJSON))
-                item_type_plural = "space_templates";
-            else
-                throw new InvalidDataException("Type " + typeof(T).Name + " unsupported");
-            return item_type_plural;
+            T pattern = new T();
+            return pattern.assetType + "s";
         }
 
         public static HttpClient GetHttpClient()

@@ -187,7 +187,7 @@ namespace AltSpace_Unity_Uploader
 
             public PagedAssetsRequest(int page)
             {
-                _apiUrl = "/api/" + DerivePagedWebTypeName<T>() + "/my.json?page=" + page;
+                _apiUrl = "/api/" + DeriveWebTypeName<T>() + "/my.json?page=" + page;
                 _method = HttpMethod.Get;
             }
 
@@ -345,18 +345,21 @@ namespace AltSpace_Unity_Uploader
         /// <summary>
         /// Derive the name needed for the API URL from the type of the JSON structure we expect to get.
         /// </summary>
-        /// <typeparam name="T">any of ITypedAsset</typeparam>
+        /// <typeparam name="T">anything that provides the assetType static property</typeparam>
         /// <returns>"kits", "space_templates" ...</returns>
-        private static string DeriveWebTypeName<T>() where T: ITypedAsset, new()
+        private static string DeriveWebTypeName<T>()
         {
-            T pattern = new T();
-            return pattern.assetType + "s";
-        }
+            // Dark Magic: Since the needed runtime doesn't really support interface definitions for static
+            // class members, we access the static methods using Reflection.
 
-        private static string DerivePagedWebTypeName<T>() where T : IPaginated, new()
-        {
-            T pattern = new T();
-            return pattern.assetType + "s";
+            string result = (string)
+                typeof(T).InvokeMember(
+                    "assetType",
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Static | 
+                    System.Reflection.BindingFlags.GetProperty,
+                    null, null, null);
+            return result + "s";
         }
 
         public static HttpClient GetHttpClient()

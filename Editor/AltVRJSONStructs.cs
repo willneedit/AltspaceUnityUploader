@@ -8,13 +8,13 @@ namespace AltSpace_Unity_Uploader
     public interface IPaginated
     {
         paginationJSON pages { get; }
-        string assetType { get; }
+        // string assetType { get; }
         void iterator<U>(Action<U> callback);
     }
 
     public interface ITypedAsset
     {
-        string assetType { get; }
+        // string assetType { get; }
         string assetId { get; }
         string assetName { get; }
     }
@@ -88,7 +88,7 @@ namespace AltSpace_Unity_Uploader
         public string user_id = null;
         public List<assetBundleJSON> asset_bundles = new List<assetBundleJSON>();
 
-        public string assetType { get => "kit";  }
+        public static string assetType { get => "kit";  }
         public string assetId { get => kit_id; }
         public string assetName { get => name; }
     }
@@ -104,7 +104,7 @@ namespace AltSpace_Unity_Uploader
 
         public paginationJSON pages { get => pagination; }
 
-        public string assetType { get => "kit"; }
+        public static string assetType { get => "kit"; }
         public void iterator<U>(Action<U> callback)
         {
             foreach (kitJSON item in kits)
@@ -137,7 +137,7 @@ namespace AltSpace_Unity_Uploader
         public List<assetBundleSceneJSON> asset_bundle_scenes = new List<assetBundleSceneJSON>(); // asset Bundles coined to different users? Strange.
         public string name = null;                  // friendly name (again)
 
-        public string assetType { get => "space_template"; }
+        public static string assetType { get => "space_template"; }
         public string assetId { get => space_template_id; }
         public string assetName { get => name; }
 
@@ -154,7 +154,7 @@ namespace AltSpace_Unity_Uploader
 
         public paginationJSON pages { get => pagination; }
 
-        public string assetType { get => "space_template"; }
+        public static string assetType { get => "space_template"; }
 
         public void iterator<U>(Action<U> callback)
         {
@@ -176,7 +176,7 @@ namespace AltSpace_Unity_Uploader
         public string created_at;                   // Creation date
         public string updated_at;                   // Last modification date
 
-        public string assetType { get => "model"; }
+        public static string assetType { get => "model"; }
         public string assetId { get => id; }
         public string assetName { get => name; }
     }
@@ -192,7 +192,7 @@ namespace AltSpace_Unity_Uploader
 
         public paginationJSON pages { get => pagination; }
 
-        public string assetType { get => "model"; }
+        public static string assetType { get => "model"; }
 
         public void iterator<U>(Action<U> callback)
         {

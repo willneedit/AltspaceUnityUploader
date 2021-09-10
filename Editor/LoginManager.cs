@@ -39,34 +39,18 @@ namespace AltSpace_Unity_Uploader
         public static HttpClient GetHttpClient() => WebClient.GetHttpClient();
 
         /// <summary>
-        /// Create an item in AltspaceVR.
+        /// Create the item entry on Altspace's content management service.
         /// </summary>
-        /// <param name="id">ID of an existing item, null for a new one</param>
-        /// <param name="item_singular">'space_template' or 'kit'</param>
-        /// <param name="name">Name of item to create</param>
-        /// <param name="description">The description</param>
-        /// <param name="imageFileName">(Optional) Local file name of the image</param>
-        /// 
-        /// <returns>The ID of the generated item</returns>
-        /// <param name="tag_list">(templates only) comma separated tag list</param>
-        public static string ManageAltVRItem(string id, string item_singular, string name, string description, string imageFileName, string tag_list = null)
+        /// <param name="item">The pre-filled item to create</param>
+        /// <returns>The ID of the item</returns>
+        public static string ManageAltVRItem(AltspaceListItem item)
         {
-            string item_fn;
 
-            if (item_singular == "space_template")
-                item_fn = "template";
-            else if (item_singular == "kit")
-                item_fn = "kit";
-            else
-                throw new InvalidDataException(item_singular + ": Not a recognized Altspace item");
-
-            string progress_caption = (id == null)
-                ? "Creating " + item_fn
-                : "Updating " + item_fn;
+            string progress_caption = ((item.id == null) ? "Creating " : "Updating ") + item.friendlyName;
 
             EditorUtility.DisplayProgressBar(progress_caption, "Retrieving landing page...", 0.0f);
 
-            var ilpr = new WebClient.ItemLandingPageRequest(id, item_singular);
+            var ilpr = new WebClient.ItemLandingPageRequest(item.id, item.type);
             if(!ilpr.Process())
             {
                 EditorUtility.ClearProgressBar();
@@ -75,7 +59,8 @@ namespace AltSpace_Unity_Uploader
 
             EditorUtility.DisplayProgressBar(progress_caption, "Posting new item...", 0.5f);
 
-            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, id, item_singular, item_fn, name, description, imageFileName, tag_list);
+            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, 
+                item.id, item.type, item.friendlyName, item.itemName, item.description, item.imageFile, item.tag_list);
             imr.Process();
 
             EditorUtility.ClearProgressBar();

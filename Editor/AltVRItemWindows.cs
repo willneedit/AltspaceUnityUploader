@@ -89,6 +89,7 @@ namespace AltSpace_Unity_Uploader
 
         protected void LoadItems<W>() where W: IPaginated, new()
         {
+            _known_items.Clear();
             LoginManager.LoadAltVRItems((W content) => content.iterator<U>(EnterItemData));
 
             if (_known_items.Count < 1)
@@ -232,6 +233,16 @@ namespace AltSpace_Unity_Uploader
 
             }
 
+            void UploadFlatItem(AltspaceListItem subItem, Action<string> updategui_fn)
+            {
+                LoginManager.ManageAltVRItem(subItem);
+
+                updategui_fn(subItem.id);
+
+                LoginManager window = EditorWindow.GetWindow<LoginManager>();
+                window.ShowNotification(new GUIContent(subItem.friendlyName.Capitalize() + " upload finished"), 5.0f);
+            }
+
             if (WebClient.IsAuthenticated)
             {
                 if (GUILayout.Button("Select " + item.friendlyName.Capitalize()))
@@ -258,13 +269,21 @@ namespace AltSpace_Unity_Uploader
                 });
             else if (item.exists)
             {
-                if (GUILayout.Button("Build"))
-                    EditorApplication.delayCall += () => BuildItem(item);
-
-                if (item.isSelected)
+                if(item.isAssetBundleItem)
                 {
-                    if (GUILayout.Button("Build & Upload"))
-                        EditorApplication.delayCall += () => BuildAndUploadItem(item, updateItem_fn);
+                    if (GUILayout.Button("Build"))
+                        EditorApplication.delayCall += () => BuildItem(item);
+
+                    if (item.isSelected)
+                    {
+                        if (GUILayout.Button("Build & Upload"))
+                            EditorApplication.delayCall += () => BuildAndUploadItem(item, updateItem_fn);
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button("Upload"))
+                        EditorApplication.delayCall += () => UploadFlatItem(item, updateItem_fn);
                 }
 
             }

@@ -50,7 +50,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorUtility.DisplayProgressBar(progress_caption, "Retrieving landing page...", 0.0f);
 
-            var ilpr = new WebClient.ItemLandingPageRequest(item.id, item.type);
+            var ilpr = new WebClient.ItemLandingPageRequest(item);
             if(!ilpr.Process())
             {
                 EditorUtility.ClearProgressBar();
@@ -59,8 +59,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorUtility.DisplayProgressBar(progress_caption, "Posting new item...", 0.5f);
 
-            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, 
-                item.id, item.type, item.friendlyName, item.itemName, item.description, item.imageFile, item.tag_list);
+            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, item);
             imr.Process();
 
             EditorUtility.ClearProgressBar();
@@ -158,6 +157,23 @@ namespace AltSpace_Unity_Uploader
             Directory.Delete(itemUploadDir, true);
         }
 
+        public static void UploadFlatAltVRItem(AltspaceListItem item)
+        {
+
+            var upr = new WebClient.UploadRequest(item);
+            Task<HttpResponseMessage> uploadTask = upr.ProcessAsync();
+
+            if (uploadTask != null)
+            {
+                HttpResponseMessage result = uploadTask.Result;
+                if (!result.IsSuccessStatusCode)
+                {
+                    Debug.LogWarning("Error during " + item.type + " upload:" + result.StatusCode);
+                    Debug.LogWarning(result.Content.ReadAsStringAsync().Result);
+                }
+            }
+        }
+
         [MenuItem("AUU/Manage Login", false, 0)]
         public static void ShowLogInWindow()
         {
@@ -239,7 +255,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.Space();
 
-            m_selectedTab = GUILayout.Toolbar(m_selectedTab, new string[] { "Kits", "Templates" });
+            m_selectedTab = GUILayout.Toolbar(m_selectedTab, new string[] { "Kits", "Templates", "Models" });
             switch(m_selectedTab)
             {
                 case 0: // Kits
@@ -247,6 +263,9 @@ namespace AltSpace_Unity_Uploader
                     break;
                 case 1: // Templates
                     OnlineTemplateManager.ManageTemplates();
+                    break;
+                case 2: // Models
+                    OnlineGLTFManager.ManageModels();
                     break;
                 default:
                     break;

@@ -138,7 +138,7 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         public abstract string suggestedAssetPath { get; }
 
-        public virtual void importAltVRItem<U>(U json) { }
+        public abstract void importAltVRItem<U>(U json);
 
         /// <summary>
         /// Start the appropiate user interaction to choose the asset for the given Altspace item
@@ -170,6 +170,53 @@ namespace AltSpace_Unity_Uploader
         /// </summary>
         /// <returns>HTTP Content, ready to be posted</returns>
         public abstract HttpContent buildUploadContent(Parameters? parm = null);
+
+        /// <summary>
+        /// build the form data content necessary to create or edit a given item
+        /// </summary>
+        /// <param name="authtoken">The Auth Token we got from the landing page</param>
+        /// <returns>HTTP Content, ready to be posted</returns>
+        public virtual (string pattern, HttpContent inner) buildManageContent(string authtoken)
+        {
+            string commit_btn_playload = (id == null)
+                ? "Create " + friendlyName.Capitalize()
+                : "Update";
+
+            string pattern = "data-method=\"delete\" href=\"/" + type + "s/";
+
+            MultipartFormDataContent inner = new MultipartFormDataContent
+                {
+                    { new StringContent("✓"), "\"utf8\"" },
+                    { new StringContent(authtoken), "\"authenticity_token\"" },
+                    { new StringContent(LoginManager.userid), type+ "[current_user_id]" },
+                    { new StringContent(itemName), type+ "[name]" },
+                    { new StringContent(commit_btn_playload), "\"commit\"" },
+                };
+
+            if (id != null)
+                inner.Add(new StringContent("patch"), "\"_method\"");
+
+            if (!string.IsNullOrEmpty(description))
+                inner.Add(new StringContent(description), type + "[description]");
+
+            if (!string.IsNullOrEmpty(imageFile))
+            {
+                var imageFileContent = new ByteArrayContent(File.ReadAllBytes(imageFile));
+                inner.Add(imageFileContent, type + "[image]", Path.GetFileName(imageFile));
+            }
+            //else
+            //{
+            //    var imageFileContent = new ByteArrayContent(new byte[0]);
+            //    inner.Add(imageFileContent, type + "[image]");
+            //}
+
+            if (tag_list != null)
+                inner.Add(new StringContent(tag_list), type + "[tag_list]");
+
+            return (pattern, inner);
+        }
+
+        public virtual bool isAssetBundleItem { get => false; }
 
     }
 
@@ -244,6 +291,8 @@ namespace AltSpace_Unity_Uploader
         public override bool exists => isSet && Directory.Exists(itemPath);
 
         public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.BundleContent(this, parm.Value);
+
+        public override bool isAssetBundleItem { get => true; }
     }
 
     public class AltspaceTemplateItem : AltspaceListItem
@@ -322,10 +371,14 @@ namespace AltSpace_Unity_Uploader
         public override bool exists => isSet && File.Exists(itemPath);
 
         public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.BundleContent(this, parm.Value);
+        public override bool isAssetBundleItem { get => true; }
     }
 
     public class AltspaceModelItem : AltspaceListItem
     {
+
+        public string createdAt;
+        public string updatedAt;
 
         public override string suggestedAssetPath
         {
@@ -337,12 +390,15 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public void importAltVRItem(modelJSON json)
+        public override void importAltVRItem<U>(U _json)
         {
+            modelJSON json = _json as modelJSON;
             itemName = json.name;
             id = json.id;
             item_url = json.gltf_url;
             tag_list = null;
+            createdAt = json.created_at;
+            updatedAt = json.updated_at;
 
             itemPath = SettingsManager.LookupKnownItem(type, id);
             if (itemPath == null)
@@ -366,7 +422,7 @@ namespace AltSpace_Unity_Uploader
             return true;
         }
 
-        public override void showSelf() => Common.ShowItem(this);
+        public override void showSelf() => OnlineGLTFManager.ShowModel(this);
 
         public override string type => "model";
 
@@ -379,6 +435,29 @@ namespace AltSpace_Unity_Uploader
         public override bool exists => isSet && File.Exists(itemPath);
 
         public override HttpContent buildUploadContent(Parameters? parm = null) => UploadContentMethods.GLTFContent(this);
+
+        public override (string pattern, HttpContent inner) buildManageContent(string authtoken)
+        {
+            string pattern;
+            HttpContent innerBase;
+            (pattern, innerBase) = base.buildManageContent(authtoken);
+
+            MultipartFormDataContent inner = innerBase as MultipartFormDataContent;
+
+            if (!string.IsNullOrEmpty(itemPath))
+            {
+                var gltfFileContent = new ByteArrayContent(File.ReadAllBytes(itemPath));
+                inner.Add(gltfFileContent, type + "[gltf]", "model.glb");
+            }
+            else
+            {
+                var gltfFileContent = new ByteArrayContent(new byte[0]);
+                inner.Add(gltfFileContent, type + "[gltf]");
+            }
+
+            return (pattern, inner);
+
+        }
     }
 }
 

@@ -48,6 +48,7 @@ namespace AltSpace_Unity_Uploader
             protected byte[] _content;
             protected string _apiUrl;
             protected HttpMethod _method;
+            protected string _referer;
 
             protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
@@ -72,6 +73,7 @@ namespace AltSpace_Unity_Uploader
             public string apiUrl { get => _apiUrl; }
             public HttpMethod method { get => _method; }
             public byte[] content { get => _content; }
+            public string referer { get => _referer; }
 
             public virtual bool Process()
             {
@@ -247,11 +249,11 @@ namespace AltSpace_Unity_Uploader
             private string _authtoken = null;
             public string authtoken { get => _authtoken; }
 
-            public ItemLandingPageRequest(string id, string item_singular)
+            public ItemLandingPageRequest(AltspaceListItem item)
             {
-                _apiUrl = "/" + item_singular + "s/" + ((id == null)
+                _apiUrl = "/" + item.type + "s/" + ((item.id == null)
                     ? "new"
-                    : id + "/edit");
+                    : item.id + "/edit");
                 _method = HttpMethod.Get;
             }
 
@@ -273,44 +275,24 @@ namespace AltSpace_Unity_Uploader
 
             public string id_result { get => _id_result; }
 
-            public ItemManageRequest(string authtoken, string id, string item_singular, string item_fn, string name, string description, string imageFileName, string tag_list = null)
+            public ItemManageRequest(string authtoken, AltspaceListItem item)
             {
-                string commit_btn_playload = (id == null)
-                    ? "Create " + item_fn.Capitalize()
-                    : "Update";
-
-                _template_id_pattern = "data-method=\"delete\" href=\"/" + item_singular + "s/";
-
-                MultipartFormDataContent inner = new MultipartFormDataContent
-                {
-                    { new StringContent("✓"), "\"utf8\"" },
-                    { new StringContent(authtoken), "\"authenticity_token\"" },
-                    { new StringContent(LoginManager.userid), item_singular + "[current_user_id]" },
-                    { new StringContent(name), item_singular + "[name]" },
-                    { new StringContent(description), item_singular + "[description]" },
-                    { new StringContent(commit_btn_playload), "\"commit\"" },
-                };
-
-                ByteArrayContent imageFileContent;
-                if (!String.IsNullOrEmpty(imageFileName))
-                {
-                    imageFileContent = new ByteArrayContent(File.ReadAllBytes(imageFileName));
-                    inner.Add(imageFileContent, item_singular + "[image]", Path.GetFileName(imageFileName));
-                }
-                else
-                {
-                    imageFileContent = new ByteArrayContent(new byte[0]);
-                    inner.Add(imageFileContent, item_singular + "[image]");
-                }
-
-                if (tag_list != null)
-                    inner.Add(new StringContent(tag_list), item_singular + "[tag_list]");
+                HttpContent inner;
+                (_template_id_pattern, inner) = item.buildManageContent(authtoken);
 
                 _content = inner.ReadAsByteArrayAsync().Result;
                 Headers.ContentType = inner.Headers.ContentType;
                 Headers.ContentDisposition = inner.Headers.ContentDisposition;
 
-                _apiUrl = "/" + item_singular + "s";
+                _referer = "/" + item.type + "s/" + ((item.id == null)
+                    ? "new"
+                    : item.id + "/edit");
+
+                if (item.id != null)
+                    _apiUrl = "/" + item.type + "s/" + item.id;
+                else
+                    _apiUrl = "/" + item.type + "s";
+
                 _method = HttpMethod.Post;
             }
 
@@ -406,6 +388,9 @@ namespace AltSpace_Unity_Uploader
                 if (!string.IsNullOrEmpty(_authToken) || (ua & UseAuthState.UA_IGNORE) != 0)
                     req.Headers.Add("X-Auth-Token", _authToken);
 
+                if (!string.IsNullOrEmpty(request.referer))
+                    req.Headers.Referrer = new System.Uri("https://account.altvr.com" + request.referer);
+
                 if (request.hasContent)
                     req.Content = request;
 
@@ -421,19 +406,27 @@ namespace AltSpace_Unity_Uploader
         public static bool ReadResponse(Task<HttpResponseMessage> response, out string contentString)
         {
             contentString = "";
-            using(var res = response.Result)
+            try
             {
-                if (!res.IsSuccessStatusCode)
+                using (var res = response.Result)
                 {
-                    Debug.LogErrorFormat("[{0}] {1}", res.StatusCode, res.Content.ReadAsStringAsync().Result);
-                    return false;
+                    if (!res.IsSuccessStatusCode)
+                    {
+                        Debug.LogErrorFormat("[{0}] {1}", res.StatusCode, res.Content.ReadAsStringAsync().Result);
+                        return false;
+                    }
+
+                    if (res.Headers.TryGetValues("X-Auth-Token", out IEnumerable<string> tokens))
+                        _authToken = tokens.First();
+
+                    contentString = res.Content.ReadAsStringAsync().Result;
+                    return true;
                 }
-
-                if (res.Headers.TryGetValues("X-Auth-Token", out IEnumerable<string> tokens))
-                    _authToken = tokens.First();
-
-                contentString = res.Content.ReadAsStringAsync().Result;
-                return true;
+            }
+            catch (OperationCanceledException ex)
+            {
+                Debug.LogWarning($"Task has been canceled, possible timeout {ex.Message}");
+                return false;
             }
         }
 

@@ -18,6 +18,11 @@ namespace AltSpace_Unity_Uploader
         {
             return str.Substring(0, 1).ToUpper() + str.Substring(1);
         }
+
+        public static string ToShortDTString(this DateTime dt)
+        {
+            return dt.ToShortDateString() + ", " + dt.ToShortTimeString();
+        }
     }
 
     public class Common

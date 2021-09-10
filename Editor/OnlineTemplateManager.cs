@@ -11,7 +11,7 @@ namespace AltSpace_Unity_Uploader
 {
     [InitializeOnLoad]
     [ExecuteInEditMode]
-    public class OnlineTemplateManager : OnlineManagerBase<AltspaceTemplateItem, templateJSON>
+    public class OnlineTemplateManager : OnlineManagerBase<AltspaceTemplateItem, templateJSON, OnlineTemplateManager>
     {
         private class CreateTemplateWindow : CreateWindowBase
         {
@@ -89,17 +89,14 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public static void ManageTemplates()
-        {
-            ManageItems<OnlineTemplateManager>("You need to set the scene name\nbefore you can build templates.");
-        }
+        public static void ManageTemplates() => ManageItems("You need to set the scene name\nbefore you can build templates.");
 
 
         private Vector2 m_scrollPosition;
 
         public void OnGUI()
         {
-            AltVRItemWidgets.BuildSelectorList(_known_items.Values, CreateTemplate, LoadTemplates, SelectItem, ref m_scrollPosition);
+            AltVRItemWidgets.BuildSelectorList(_known_items.Values, CreateTemplate, LoadItems<templatesJSON>, SelectItem, ref m_scrollPosition);
 
             void CreateTemplate()
             {
@@ -127,20 +124,6 @@ namespace AltSpace_Unity_Uploader
                         }
                     });
                 window.Show();
-            }
-
-            void LoadTemplates()
-            {
-                LoginManager.LoadAltVRItems((templatesJSON content) =>
-                {
-                    foreach (templateJSON tmpl in content.space_templates)
-                        if (tmpl.asset_bundle_scenes.Count > 0 && tmpl.asset_bundle_scenes[0].user_id == LoginManager.userid)
-                            EnterItemData(tmpl);
-                });
-
-                if (_known_items.Count == 0)
-                    ShowNotification(new GUIContent("No own templates"), 5.0f);
-
             }
 
         }

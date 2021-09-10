@@ -96,7 +96,7 @@ namespace AltSpace_Unity_Uploader
             return sar.singleAsset;
         }
 
-        public static void LoadAltVRItems<T>(Action<T> callback) where T: ITypedAsset, new()
+        public static void LoadAltVRItems<T>(Action<T> callback) where T: IPaginated, new()
         {
             int currentPage = 0;
             int maxPage = 1;
@@ -283,8 +283,8 @@ namespace AltSpace_Unity_Uploader
 
         private void DoLogout()
         {
-            OnlineKitManager.ResetContents<OnlineKitManager>();
-            OnlineTemplateManager.ResetContents<OnlineTemplateManager>();
+            OnlineKitManager.ResetContents();
+            OnlineTemplateManager.ResetContents();
             _userEntry = null;
 
             var req = new WebClient.LogoutRequest();

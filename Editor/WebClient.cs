@@ -175,7 +175,7 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public class PagedAssetsRequest<T> : AltspaceRequest where T : ITypedAsset, new()
+        public class PagedAssetsRequest<T> : AltspaceRequest where T : IPaginated, new()
         {
             private T _pagedAsset;
             private int _page = 0;
@@ -187,7 +187,7 @@ namespace AltSpace_Unity_Uploader
 
             public PagedAssetsRequest(int page)
             {
-                _apiUrl = "/api/" + DeriveWebTypeName<T>() + "/my.json?page=" + page;
+                _apiUrl = "/api/" + DerivePagedWebTypeName<T>() + "/my.json?page=" + page;
                 _method = HttpMethod.Get;
             }
 
@@ -348,6 +348,12 @@ namespace AltSpace_Unity_Uploader
         /// <typeparam name="T">any of ITypedAsset</typeparam>
         /// <returns>"kits", "space_templates" ...</returns>
         private static string DeriveWebTypeName<T>() where T: ITypedAsset, new()
+        {
+            T pattern = new T();
+            return pattern.assetType + "s";
+        }
+
+        private static string DerivePagedWebTypeName<T>() where T : IPaginated, new()
         {
             T pattern = new T();
             return pattern.assetType + "s";

@@ -42,7 +42,10 @@ namespace AltSpace_Unity_Uploader
 
     }
 
-    public abstract class OnlineManagerBase<T, U> : EditorWindow where T: AltspaceListItem, new() where U: ITypedAsset, new()
+    public abstract class OnlineManagerBase<T, U, V> : EditorWindow 
+        where T: AltspaceListItem, new() 
+        where U: ITypedAsset, new()
+        where V: EditorWindow
     {
         protected static Dictionary<string, T> _known_items = new Dictionary<string, T>();
         protected static T _selected_item = new T();
@@ -54,7 +57,7 @@ namespace AltSpace_Unity_Uploader
             GetWindow<LoginManager>().Repaint();
         }
 
-        public static void ResetContents<V>() where V : OnlineManagerBase<T, U>
+        public static void ResetContents()
         {
             GetWindow<V>().Close();
             _known_items = new Dictionary<string, T>();
@@ -84,7 +87,15 @@ namespace AltSpace_Unity_Uploader
             return false;
         }
 
-        protected static void ManageItems<V>(string message) where V: OnlineManagerBase<T, U>
+        protected void LoadItems<W>() where W: IPaginated, new()
+        {
+            LoginManager.LoadAltVRItems((W content) => content.iterator<U>(EnterItemData));
+
+            if (_known_items.Count < 1)
+                ShowNotification(new GUIContent("Item list is empty"), 5.0f);
+        }
+
+        protected static void ManageItems(string message)
         {
 
             AltVRItemWidgets.ManageItem(

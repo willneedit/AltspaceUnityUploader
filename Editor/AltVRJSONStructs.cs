@@ -8,6 +8,8 @@ namespace AltSpace_Unity_Uploader
     public interface IPaginated
     {
         paginationJSON pages { get; }
+        string assetType { get; }
+        void iterator<U>(Action<U> callback);
     }
 
     public interface ITypedAsset
@@ -95,7 +97,7 @@ namespace AltSpace_Unity_Uploader
     /// A single page of kits
     /// </summary>
     [Serializable]
-    public class kitsJSON : IPaginated, ITypedAsset
+    public class kitsJSON : IPaginated
     {
         public List<kitJSON> kits = new List<kitJSON>();
         public paginationJSON pagination = new paginationJSON();
@@ -103,8 +105,12 @@ namespace AltSpace_Unity_Uploader
         public paginationJSON pages { get => pagination; }
 
         public string assetType { get => "kit"; }
-        public string assetId { get => null; }
-        public string assetName { get => null; }
+        public void iterator<U>(Action<U> callback)
+        {
+            foreach (kitJSON item in kits)
+                if (item.user_id == LoginManager.userid)
+                    (callback as Action<kitJSON>) (item);
+        }
     }
 
 
@@ -134,13 +140,14 @@ namespace AltSpace_Unity_Uploader
         public string assetType { get => "space_template"; }
         public string assetId { get => space_template_id; }
         public string assetName { get => name; }
+
     }
 
     /// <summary>
     /// A single page of templates
     /// </summary>
     [Serializable]
-    public class templatesJSON : IPaginated, ITypedAsset
+    public class templatesJSON : IPaginated
     {
         public List<templateJSON> space_templates = new List<templateJSON>();
         public paginationJSON pagination = new paginationJSON();
@@ -148,8 +155,13 @@ namespace AltSpace_Unity_Uploader
         public paginationJSON pages { get => pagination; }
 
         public string assetType { get => "space_template"; }
-        public string assetId { get => null; }
-        public string assetName { get => null; }
+
+        public void iterator<U>(Action<U> callback)
+        {
+            foreach (templateJSON item in space_templates)
+                if (item.asset_bundle_scenes.Count > 0 && item.asset_bundle_scenes[0].user_id == LoginManager.userid)
+                    (callback as Action<templateJSON>)(item);
+        }
     }
 
     /// <summary>
@@ -173,7 +185,7 @@ namespace AltSpace_Unity_Uploader
     /// A single page of GLTF models
     /// </summary>
     [Serializable]
-    public class modelsJSON : IPaginated, ITypedAsset
+    public class modelsJSON : IPaginated
     {
         public List<modelJSON> models = new List<modelJSON>();
         public paginationJSON pagination = new paginationJSON();
@@ -181,7 +193,11 @@ namespace AltSpace_Unity_Uploader
         public paginationJSON pages { get => pagination; }
 
         public string assetType { get => "model"; }
-        public string assetId { get => null; }
-        public string assetName { get => null; }
+
+        public void iterator<U>(Action<U> callback)
+        {
+            foreach (modelJSON item in models)
+                (callback as Action<modelJSON>)(item);
+        }
     }
 }

@@ -9,7 +9,7 @@ namespace AltSpace_Unity_Uploader
 {
     [InitializeOnLoad]
     [ExecuteInEditMode]
-    public class OnlineKitManager : OnlineManagerBase<AltspaceKitItem, kitJSON>
+    public class OnlineKitManager : OnlineManagerBase<AltspaceKitItem, kitJSON, OnlineKitManager>
     {
         private class CreateKitWindow : CreateWindowBase
         {
@@ -75,17 +75,14 @@ namespace AltSpace_Unity_Uploader
             }
         }
 
-        public static void ManageKits()
-        {
-            ManageItems<OnlineKitManager>("You need to set a directory before you can build kits.");
-        }
+        public static void ManageKits() => ManageItems("You need to set a directory before you can build kits.");
 
         private Vector2 m_scrollPosition;
 
         public void OnGUI()
         {
 
-            AltVRItemWidgets.BuildSelectorList(_known_items.Values, CreateKit, LoadKits, SelectItem, ref m_scrollPosition);
+            AltVRItemWidgets.BuildSelectorList(_known_items.Values, CreateKit, LoadItems<kitsJSON>, SelectItem, ref m_scrollPosition);
 
             void CreateKit()
             {
@@ -111,20 +108,6 @@ namespace AltSpace_Unity_Uploader
                         }
                     });
                 window.Show();
-            }
-
-            void LoadKits()
-            {
-                LoginManager.LoadAltVRItems((kitsJSON content) =>
-                {
-                    foreach (kitJSON kit in content.kits)
-                        if(kit.user_id == LoginManager.userid)
-                            EnterItemData(kit);
-                });
-
-                if (_known_items.Count == 0)
-                    ShowNotification(new GUIContent("No own kits"), 5.0f);
-
             }
 
         }

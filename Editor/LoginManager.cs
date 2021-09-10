@@ -51,7 +51,7 @@ namespace AltSpace_Unity_Uploader
         /// <param name="tag_list">(templates only) comma separated tag list</param>
         public static string ManageAltVRItem(string id, string item_singular, string name, string description, string imageFileName, string tag_list = null)
         {
-            string item_fn = null;
+            string item_fn;
 
             if (item_singular == "space_template")
                 item_fn = "template";
@@ -75,7 +75,7 @@ namespace AltSpace_Unity_Uploader
 
             EditorUtility.DisplayProgressBar(progress_caption, "Posting new item...", 0.5f);
 
-            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, id, item_singular, name, description, imageFileName, tag_list);
+            var imr = new WebClient.ItemManageRequest(ilpr.authtoken, id, item_singular, item_fn, name, description, imageFileName, tag_list);
             imr.Process();
 
             EditorUtility.ClearProgressBar();

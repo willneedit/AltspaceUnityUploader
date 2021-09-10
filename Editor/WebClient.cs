@@ -273,19 +273,10 @@ namespace AltSpace_Unity_Uploader
 
             public string id_result { get => _id_result; }
 
-            public ItemManageRequest(string authtoken, string id, string item_singular, string name, string description, string imageFileName, string tag_list = null)
+            public ItemManageRequest(string authtoken, string id, string item_singular, string item_fn, string name, string description, string imageFileName, string tag_list = null)
             {
-                string item_fn;
-
-                if (item_singular == "space_template")
-                    item_fn = "template";
-                else if (item_singular == "kit")
-                    item_fn = "kit";
-                else
-                    throw new InvalidDataException(item_singular + ": Not a recognized Altspace item");
-
                 string commit_btn_playload = (id == null)
-                    ? "Create " + item_fn.Substring(0, 1).ToUpper() + item_fn.Substring(1)
+                    ? "Create " + item_fn.Capitalize()
                     : "Update";
 
                 _template_id_pattern = "data-method=\"delete\" href=\"/" + item_singular + "s/";

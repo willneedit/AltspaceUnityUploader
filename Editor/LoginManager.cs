@@ -1,12 +1,9 @@
 ﻿#if UNITY_EDITOR
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
@@ -18,12 +15,25 @@ namespace AltSpace_Unity_Uploader
     [ExecuteInEditMode]
     public class LoginManager : EditorWindow
     {
+        // Typically I hate independent lists which are associated, but everything else would
+        // require too much boilerplate for the gain....
+        private static string[] moduleNames = {
+            "Kits",
+            "Templates",
+            "Models"
+        };
+        private static Action[] moduleManageCalls = {
+            OnlineKitManager.ManageKits,
+            OnlineTemplateManager.ManageTemplates,
+            OnlineGLTFManager.ManageModels
+        };
+
         public static readonly string versionString = "3.0.0-beta3";
 
         private static string _login = "";
         private static string _password = "";
         private static userEntryJSON _userEntry = null;
-        
+
         /// <summary>
         /// ID of the currently logged in user, null if not logged in or unavailable.
         /// </summary>
@@ -255,21 +265,8 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.Space();
 
-            m_selectedTab = GUILayout.Toolbar(m_selectedTab, new string[] { "Kits", "Templates", "Models" });
-            switch(m_selectedTab)
-            {
-                case 0: // Kits
-                    OnlineKitManager.ManageKits();
-                    break;
-                case 1: // Templates
-                    OnlineTemplateManager.ManageTemplates();
-                    break;
-                case 2: // Models
-                    OnlineGLTFManager.ManageModels();
-                    break;
-                default:
-                    break;
-            }
+            m_selectedTab = GUILayout.Toolbar(m_selectedTab, moduleNames);
+            moduleManageCalls[m_selectedTab]();
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.LabelField("Altspace Unity Uploader " + versionString, EditorStyles.centeredGreyMiniLabel);

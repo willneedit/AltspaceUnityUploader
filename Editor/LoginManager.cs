@@ -20,11 +20,13 @@ namespace AltSpace_Unity_Uploader
         private static string[] moduleNames = {
             "Kits",
             "Templates",
+            "Audio Clips",
             "Models"
         };
         private static Action[] moduleManageCalls = {
             OnlineKitManager.ManageKits,
             OnlineTemplateManager.ManageTemplates,
+            OnlineAudioClipManager.ManageAudioClips,
             OnlineGLTFManager.ManageModels
         };
 

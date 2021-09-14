@@ -119,7 +119,7 @@ namespace AltSpace_Unity_Uploader
 
         public override string friendlyName => "template";
 
-        public override string pluralType => "templates";
+        public override string pluralType => "space_templates";
 
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 

@@ -152,9 +152,9 @@ namespace AltSpace_Unity_Uploader
         public abstract string friendlyName { get; }        // "kit" or "template"
 
         /// <summary>
-        /// plural of the friendly name
+        /// plural of the type name
         /// </summary>
-        public abstract string pluralName { get; }          // "kits" or "templates"
+        public abstract string pluralType { get; }          // "kits" or "space_templates"
 
         /// <summary>
         /// Describe yourself in the GUI, with all details

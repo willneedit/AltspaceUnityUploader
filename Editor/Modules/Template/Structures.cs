@@ -23,7 +23,7 @@ namespace AltSpace_Unity_Uploader
         public List<assetBundleSceneJSON> asset_bundle_scenes = new List<assetBundleSceneJSON>(); // asset Bundles coined to different users? Strange.
         public string name = null;                  // friendly name (again)
 
-        public static string assetType { get => "space_template"; }
+        public static string assetPluralType { get => "space_templates"; }
         public string assetId { get => space_template_id; }
         public string assetName { get => name; }
 
@@ -40,7 +40,7 @@ namespace AltSpace_Unity_Uploader
 
         public paginationJSON pages { get => pagination; }
 
-        public static string assetType { get => "space_template"; }
+        public static string assetPluralType { get => "space_templates"; }
 
         public void iterator<U>(Action<U> callback)
         {
@@ -119,7 +119,7 @@ namespace AltSpace_Unity_Uploader
 
         public override string friendlyName => "template";
 
-        public override string pluralName => "templates";
+        public override string pluralType => "templates";
 
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 

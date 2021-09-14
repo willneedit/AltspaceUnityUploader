@@ -218,7 +218,7 @@ namespace AltSpace_Unity_Uploader
                 Headers.ContentType = inner.Headers.ContentType;
                 Headers.ContentDisposition = inner.Headers.ContentDisposition;
 
-                _apiUrl = "/api/" + item.type + "s/" + item.id + ".json";
+                _apiUrl = "/api/" + item.pluralType + "/" + item.id + ".json";
                 _method = HttpMethod.Put;
             }
 
@@ -229,7 +229,7 @@ namespace AltSpace_Unity_Uploader
                 Headers.ContentType = inner.Headers.ContentType;
                 Headers.ContentDisposition = inner.Headers.ContentDisposition;
 
-                _apiUrl = "/api/" + item.type + "s/" + item.id + ".json";
+                _apiUrl = "/api/" + item.pluralType + "/" + item.id + ".json";
                 _method = HttpMethod.Put;
             }
 
@@ -251,7 +251,7 @@ namespace AltSpace_Unity_Uploader
 
             public ItemLandingPageRequest(AltspaceListItem item)
             {
-                _apiUrl = "/" + item.type + "s/" + ((item.id == null)
+                _apiUrl = "/" + item.pluralType + "/" + ((item.id == null)
                     ? "new"
                     : item.id + "/edit");
                 _method = HttpMethod.Get;
@@ -284,14 +284,14 @@ namespace AltSpace_Unity_Uploader
                 Headers.ContentType = inner.Headers.ContentType;
                 Headers.ContentDisposition = inner.Headers.ContentDisposition;
 
-                _referer = "/" + item.type + "s/" + ((item.id == null)
+                _referer = "/" + item.pluralType + "/" + ((item.id == null)
                     ? "new"
                     : item.id + "/edit");
 
                 if (item.id != null)
-                    _apiUrl = "/" + item.type + "s/" + item.id;
+                    _apiUrl = "/" + item.pluralType + "/" + item.id;
                 else
-                    _apiUrl = "/" + item.type + "s";
+                    _apiUrl = "/" + item.pluralType;
 
                 _method = HttpMethod.Post;
             }
@@ -318,21 +318,20 @@ namespace AltSpace_Unity_Uploader
         /// <summary>
         /// Derive the name needed for the API URL from the type of the JSON structure we expect to get.
         /// </summary>
-        /// <typeparam name="T">anything that provides the assetType static property</typeparam>
+        /// <typeparam name="T">anything that provides the assetPluralType static property</typeparam>
         /// <returns>"kits", "space_templates" ...</returns>
         private static string DeriveWebTypeName<T>()
         {
             // Dark Magic: Since the needed runtime doesn't really support interface definitions for static
             // class members, we access the static methods using Reflection.
 
-            string result = (string)
+            return (string)
                 typeof(T).InvokeMember(
-                    "assetType",
+                    "assetPluralType",
                     System.Reflection.BindingFlags.Public |
                     System.Reflection.BindingFlags.Static | 
                     System.Reflection.BindingFlags.GetProperty,
                     null, null, null);
-            return result + "s";
         }
 
         public static HttpClient GetHttpClient()

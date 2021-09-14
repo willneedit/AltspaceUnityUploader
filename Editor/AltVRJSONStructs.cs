@@ -8,13 +8,13 @@ namespace AltSpace_Unity_Uploader
     public interface IPaginated
     {
         paginationJSON pages { get; }
-        // string assetType { get; }
+        // string assetPluralType { get; }
         void iterator<U>(Action<U> callback);
     }
 
     public interface ITypedAsset
     {
-        // string assetType { get; }
+        // string assetPluralType { get; }
         string assetId { get; }
         string assetName { get; }
     }

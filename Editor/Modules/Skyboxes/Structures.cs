@@ -12,15 +12,16 @@ namespace AltSpace_Unity_Uploader
     /// A single GLTF model
     /// </summary>
     [Serializable]
-    public class audioClipJSON : ITypedAsset
+    public class skyboxJSON : ITypedAsset
     {
         public string name = null;                  // The name
         public string id = null;                    // The ID
+        public string three_sixty_image = null;     // The URL of the 360° image
         public string audio_url = null;             // The URL of the audio file
         public string created_at;                   // Creation date
         public string updated_at;                   // Last modification date
 
-        public static string assetPluralType { get => "audio_clips"; }
+        public static string assetPluralType { get => "skyboxes"; }
         public string assetId { get => id; }
         public string assetName { get => name; }
     }
@@ -29,44 +30,45 @@ namespace AltSpace_Unity_Uploader
     /// A single page of GLTF models
     /// </summary>
     [Serializable]
-    public class audioClipsJSON : IPaginated
+    public class skyboxesJSON : IPaginated
     {
-        public List<audioClipJSON> audio_clips = new List<audioClipJSON>();
+        public List<skyboxJSON> skyboxes = new List<skyboxJSON>();
         public paginationJSON pagination = new paginationJSON();
 
         public paginationJSON pages { get => pagination; }
 
-        public static string assetPluralType { get => "audio_clips"; }
+        public static string assetPluralType { get => "skyboxes"; }
 
         public void iterator<U>(Action<U> callback)
         {
-            foreach (audioClipJSON item in audio_clips)
-                (callback as Action<audioClipJSON>)(item);
+            foreach (skyboxJSON item in skyboxes)
+                (callback as Action<skyboxJSON>)(item);
         }
     }
 
-    public class AltspaceAudioClipItem : AltspaceListItem
+    public class AltspaceSkyboxItem : AltspaceListItem
     {
 
         public string createdAt;
         public string updatedAt;
+        public string bgAudioPath;
 
         public override string suggestedAssetPath
         {
             get
             {
                 string fileName = id + "_" + Common.SanitizeFileName(itemName);
-                string fullName = Path.Combine("Assets", "AudioClip", fileName + ".wav");
+                string fullName = Path.Combine("Assets", "Skybox", fileName + ".png");
                 return (File.Exists(fullName)) ? fullName : null;
             }
         }
 
         public override void importAltVRItem<U>(U _json)
         {
-            audioClipJSON json = _json as audioClipJSON;
+            skyboxJSON json = _json as skyboxJSON;
             itemName = json.name;
             id = json.id;
-            item_url = json.audio_url;
+            item_url = json.three_sixty_image;
             tag_list = null;
             createdAt = json.created_at;
             updatedAt = json.updated_at;
@@ -79,7 +81,7 @@ namespace AltSpace_Unity_Uploader
         public override void chooseAssetPath()
         {
             string fileName = id + "_" + Common.SanitizeFileName(itemName);
-            itemPath = Path.Combine("Assets", "AudioClip", fileName + ".wav");
+            itemPath = Path.Combine("Assets", "Skybox", fileName + ".png");
         }
 
         public override void createAsset() => throw new NotImplementedException();
@@ -90,13 +92,13 @@ namespace AltSpace_Unity_Uploader
             return true;
         }
 
-        public override void showSelf() => OnlineAudioClipManager.ShowAudioClip(this);
+        public override void showSelf() => OnlineSkyboxManager.ShowSkybox(this);
 
-        public override string type => "audio_clip";
+        public override string type => "skybox";
 
-        public override string friendlyName => "audio clip";
+        public override string friendlyName => "skybox";
 
-        public override string pluralType => "audio_clips";
+        public override string pluralType => "skyboxes";
 
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 
@@ -114,13 +116,19 @@ namespace AltSpace_Unity_Uploader
 
             if (!string.IsNullOrEmpty(itemPath))
             {
-                var audioClipFileContent = new ByteArrayContent(File.ReadAllBytes(itemPath));
-                inner.Add(audioClipFileContent, type + "[audio]", "audio_clip" + Path.GetExtension(itemPath));
+                var skyboxFileContent = new ByteArrayContent(File.ReadAllBytes(itemPath));
+                inner.Add(skyboxFileContent, type + "[three_sixty_image]", "skybox" + Path.GetExtension(itemPath));
             }
             else
             {
-                var audioClipFileContent = new ByteArrayContent(new byte[0]);
-                inner.Add(audioClipFileContent, type + "[audio]");
+                var skyboxFileContent = new ByteArrayContent(new byte[0]);
+                inner.Add(skyboxFileContent, type + "[three_sixty_image]");
+            }
+
+            if(!String.IsNullOrEmpty(bgAudioPath))
+            {
+                var bgAudioContent = new ByteArrayContent(File.ReadAllBytes(bgAudioPath));
+                inner.Add(bgAudioContent, type + "[audio]", "bgAudio" + Path.GetExtension(bgAudioPath));
             }
 
             return (pattern, inner);

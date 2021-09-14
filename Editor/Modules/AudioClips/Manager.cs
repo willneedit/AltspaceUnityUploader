@@ -69,7 +69,7 @@ namespace AltSpace_Unity_Uploader
                     "This file is not within this project's Assets.\n"+
                     "It is recommended to keep the audio clip file within this project\n", style);
             }
-            else if (!audioClip.exists)
+            if (!audioClip.exists)
             {
                 GUILayout.Label("The file does exist.", new GUIStyle()
                 {

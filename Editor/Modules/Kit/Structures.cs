@@ -21,7 +21,7 @@ namespace AltSpace_Unity_Uploader
         public string user_id = null;
         public List<assetBundleJSON> asset_bundles = new List<assetBundleJSON>();
 
-        public static string assetType { get => "kit"; }
+        public static string assetPluralType { get => "kits"; }
         public string assetId { get => kit_id; }
         public string assetName { get => name; }
     }
@@ -37,7 +37,7 @@ namespace AltSpace_Unity_Uploader
 
         public paginationJSON pages { get => pagination; }
 
-        public static string assetType { get => "kit"; }
+        public static string assetPluralType { get => "kits"; }
         public void iterator<U>(Action<U> callback)
         {
             foreach (kitJSON item in kits)
@@ -111,7 +111,7 @@ namespace AltSpace_Unity_Uploader
 
         public override string friendlyName => "kit";
 
-        public override string pluralName => "kits";
+        public override string pluralType => "kits";
 
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 

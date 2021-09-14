@@ -71,7 +71,7 @@ namespace AltSpace_Unity_Uploader
                     "This file is not within this project's Assets.\n"+
                     "It is recommended to keep the GLB file within this project\n", style);
             }
-            else if (!model.exists)
+            if (!model.exists)
             {
                 GUILayout.Label("The file does exist.", new GUIStyle()
                 {

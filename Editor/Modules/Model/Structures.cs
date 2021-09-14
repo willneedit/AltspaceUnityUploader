@@ -20,7 +20,7 @@ namespace AltSpace_Unity_Uploader
         public string created_at;                   // Creation date
         public string updated_at;                   // Last modification date
 
-        public static string assetType { get => "model"; }
+        public static string assetPluralType { get => "models"; }
         public string assetId { get => id; }
         public string assetName { get => name; }
     }
@@ -36,7 +36,7 @@ namespace AltSpace_Unity_Uploader
 
         public paginationJSON pages { get => pagination; }
 
-        public static string assetType { get => "model"; }
+        public static string assetPluralType { get => "models"; }
 
         public void iterator<U>(Action<U> callback)
         {
@@ -96,7 +96,7 @@ namespace AltSpace_Unity_Uploader
 
         public override string friendlyName => "model";
 
-        public override string pluralName => "models";
+        public override string pluralType => "models";
 
         public override bool isSet => !string.IsNullOrEmpty(itemPath);
 

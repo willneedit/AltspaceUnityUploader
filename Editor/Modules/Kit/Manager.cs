@@ -60,7 +60,7 @@ namespace AltSpace_Unity_Uploader
                     "You need to set a directory path to any place within the Assets of this project,\n"+
                     "preferably to a directory you solely dedicate to the future kit objects.", style);
             }
-            else if (!kit.exists)
+            if (!kit.exists)
             {
                 GUILayout.Label("The directory doesn't exist.\nPress the button below to create it.", new GUIStyle()
                 {

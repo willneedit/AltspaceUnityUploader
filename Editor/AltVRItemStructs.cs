@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 
+using UnityEngine.XR;
+
 namespace AltSpace_Unity_Uploader
 {
     public abstract class AltspaceListItem
@@ -24,11 +26,38 @@ namespace AltSpace_Unity_Uploader
                 zipContents.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
 
                 var colorSpace = PlayerSettings.colorSpace == ColorSpace.Linear ? "linear" : "gamma";
-                var srp = PlayerSettings.stereoRenderingPath == StereoRenderingPath.Instancing
-                    ? (parm.isExclusivelyAndroid ? "spmv" : "spi")
-                    : (PlayerSettings.stereoRenderingPath == StereoRenderingPath.SinglePass)
-                        ? "sp"
-                        : "mp";
+                string srp;
+
+                var oSettings = AssetDatabase.LoadAssetAtPath<Unity.XR.Oculus.OculusSettings>("Assets/XR/Settings/Oculus Settings.asset");
+                if (oSettings == null)
+                    srp = "misconfigured";
+                else
+                {
+                    // In that Oculus Settings there are both for Desktop and Android... Either legacy MultiPass or the optimized.
+                    var oSRMDesktop = (oSettings.m_StereoRenderingModeDesktop == Unity.XR.Oculus.OculusSettings.StereoRenderingModeDesktop.MultiPass ? XRSettings.StereoRenderingMode.MultiPass : XRSettings.StereoRenderingMode.SinglePassInstanced);
+                    var oSRMAndroid = (oSettings.m_StereoRenderingModeAndroid == Unity.XR.Oculus.OculusSettings.StereoRenderingModeAndroid.MultiPass ? XRSettings.StereoRenderingMode.MultiPass : XRSettings.StereoRenderingMode.SinglePassMultiview);
+
+                    var oSRM = (parm.isExclusivelyAndroid ? oSRMAndroid : oSRMDesktop);
+
+                    switch (oSRM)
+                    {
+                        case XRSettings.StereoRenderingMode.MultiPass:
+                            srp = "mp";
+                            break;
+                        case XRSettings.StereoRenderingMode.SinglePass:
+                            srp = "sp";
+                            break;
+                        case XRSettings.StereoRenderingMode.SinglePassInstanced:
+                            srp = "spi";
+                            break;
+                        case XRSettings.StereoRenderingMode.SinglePassMultiview:
+                            srp = "spmv";
+                            break;
+                        default:
+                            srp = "invalid";
+                            break;
+                    }
+                }
 
                 return new MultipartFormDataContent
                 {

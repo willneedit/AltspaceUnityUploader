@@ -484,30 +484,8 @@ namespace AltSpace_Unity_Uploader
 
         private static void CreateZip(string sourceDirectory, string outputFile)
         {
-            if(true) // (Application.platform == RuntimePlatform.WindowsEditor)
-            {
-                ZipFile.CreateFromDirectory(sourceDirectory, outputFile);
-            }
-            else
-            {
-                outputFile = outputFile.Replace("\"", "\\\"");
-                using (Process proc = Process.Start(new ProcessStartInfo()
-                {
-                    WorkingDirectory = sourceDirectory,
-                    FileName = "/usr/bin/zip",
-                    Arguments = $"-r \"{outputFile}\" .",
-                    UseShellExecute = false
-                }))
-                {
-                    proc.WaitForExit();
-                    if (proc.ExitCode != 0)
-                    {
-                        throw new Exception($"Zip call failed with exit code {proc.ExitCode}");
-                    }
-                }
-            }
+            ZipFile.CreateFromDirectory(sourceDirectory, outputFile);            
         }
-
     }
 }
 

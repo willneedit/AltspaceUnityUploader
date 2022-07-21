@@ -2,7 +2,15 @@
 
 pkgname="org.willneedit.altspace_unity_uploader"
 dllfile="Library/ScriptAssemblies/${pkgname}.dll"
+tgtdir=$(pwd)
+
+if [ "x$1" != "x" ]; then
+	tgtdir="$1"
+fi
+
 cd $(dirname "$0")
+
+echo ${tgtdir}/${pkgname}.tgz
 
 if [ ! -f ../../${dllfile} ]; then
 	echo "Need compiled DLL of plugin - simply have Unity run."
@@ -43,5 +51,5 @@ rm -rf Editor Editor.meta
 rm -rf build_tgz.sh build_tgz.sh.meta .git
 
 cd ..
-tar -czf ${pkgname}.tgz package
+tar -czf ${tgtdir}/${pkgname}.tgz package
 rm -rf package

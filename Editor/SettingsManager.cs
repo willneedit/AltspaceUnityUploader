@@ -390,17 +390,8 @@ namespace AltSpace_Unity_Uploader
 
         }
 
-        public void OnGUI()
+        public static void Initialize()
         {
-            _ = settings;
-
-            if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneWindows))
-                _settings.BuildForPC = false;
-            if (!Common.IsBuildTargetSupported(BuildTarget.Android))
-                _settings.BuildForAndroid = false;
-            if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
-                _settings.BuildForMac = false;
-
             if (!initializing)
             {
                 initializing = true;
@@ -422,6 +413,22 @@ namespace AltSpace_Unity_Uploader
                 else
                     initialized = true;
             }
+
+        }
+
+        public void OnGUI()
+        {
+            _ = settings;
+
+            if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneWindows))
+                _settings.BuildForPC = false;
+            if (!Common.IsBuildTargetSupported(BuildTarget.Android))
+                _settings.BuildForAndroid = false;
+            if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
+                _settings.BuildForMac = false;
+
+            Initialize();
+
             if (!initialized)
             {
                 EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });

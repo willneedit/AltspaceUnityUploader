@@ -207,6 +207,8 @@ namespace AltSpace_Unity_Uploader
 
         public void OnGUI()
         {
+            SettingsManager.Initialize();
+
             if (!SettingsManager.initialized)
             {
                 EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });

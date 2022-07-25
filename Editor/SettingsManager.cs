@@ -246,6 +246,7 @@ namespace AltSpace_Unity_Uploader
         private static Settings _settings = null;
         private static KnownItemsList _kilist = null;
 
+        public static bool initializing = false;
         public static bool initialized = false;
         public static string initErrorMsg = "";
 
@@ -369,6 +370,7 @@ namespace AltSpace_Unity_Uploader
         static SettingsManager()
         {
             initialized = false;
+            initializing = false;
 
             if(Common.usingUnityVersion < Common.minimumUnityVersion)
             {
@@ -386,11 +388,6 @@ namespace AltSpace_Unity_Uploader
                 Debug.LogWarning("Current recommendation is to use Unity " + Common.strictUnityVersion + ".\nOther builds, like your " + Application.unityVersion + " may or may not work.");
             }
 
-            if (settings.CheckBuildEnv)
-            {
-                Debug.Log("Checking build settings...");
-                EditorApplication.update += CheckXRSettings;
-            }
         }
 
         public void OnGUI()
@@ -404,7 +401,28 @@ namespace AltSpace_Unity_Uploader
             if (!Common.IsBuildTargetSupported(BuildTarget.StandaloneOSX))
                 _settings.BuildForMac = false;
 
-            if(!initialized)
+            if (!initializing)
+            {
+                initializing = true;
+
+                if (settings.CheckBuildEnv)
+                {
+
+                    if (EditorApplication.isPlaying)
+                    {
+                        Debug.Log("Cannot check the build environment while playing");
+                        initialized = true;
+                    }
+                    else
+                    {
+                        Debug.Log("Checking build settings...");
+                        EditorApplication.update += CheckXRSettings;
+                    }
+                }
+                else
+                    initialized = true;
+            }
+            if (!initialized)
             {
                 EditorGUILayout.BeginVertical(new GUIStyle { padding = new RectOffset(10, 10, 10, 10) });
                 EditorGUILayout.Space(10);

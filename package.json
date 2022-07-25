@@ -2,7 +2,7 @@
   "name": "org.willneedit.altspace_unity_uploader",
   "displayName": "Altspace Unity Uploader",
   "author": "willneedit",
-  "version": "3.1.1",
+  "version": "3.1.3",
   "unity": "2020.3",
   "description": "Create, build and upload custom assets to AltspaceVR",
   "keywords": ["altspace", "altspacevr", "vr", "virtual reality", "mr", "mixed reality", "oculus", "steamvr"],

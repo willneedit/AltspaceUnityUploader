@@ -31,7 +31,7 @@ namespace AltSpace_Unity_Uploader
         public static readonly int minimumUnityVersion = 20203;
 
         public static readonly string relaxedUnityVersion = "2020.3";
-        public static readonly string strictUnityVersion = "2020.3.9f1";
+        public static readonly string strictUnityVersion = "2020.3.18f1";
 
         private static int _usingUnityVersion = 0;
 

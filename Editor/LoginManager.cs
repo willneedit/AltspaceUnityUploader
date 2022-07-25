@@ -32,7 +32,7 @@ namespace AltSpace_Unity_Uploader
             OnlineGLTFManager.ManageModels
         };
 
-        public static readonly string versionString = "3.1.2";
+        public static readonly string versionString = "3.1.3";
 
         private static string _login = "";
         private static string _password = "";

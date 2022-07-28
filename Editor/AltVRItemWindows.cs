@@ -261,6 +261,8 @@ namespace AltSpace_Unity_Uploader
 
             EditorGUILayout.BeginHorizontal();
 
+            bool wouldUploadAssetBundle = false;
+
             if (!item.isSet)
                 GUILayout.Label(missingString, new GUIStyle()
                 {
@@ -269,15 +271,20 @@ namespace AltSpace_Unity_Uploader
                 });
             else if (item.exists)
             {
-                if(item.isAssetBundleItem)
+
+                if (item.isAssetBundleItem)
                 {
                     if (GUILayout.Button("Build"))
                         EditorApplication.delayCall += () => BuildItem(item);
 
                     if (item.isSelected)
                     {
-                        if (GUILayout.Button("Build & Upload"))
-                            EditorApplication.delayCall += () => BuildAndUploadItem(item, updateItem_fn);
+                        if (UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline != null)
+                        {
+                            if (GUILayout.Button("Build & Upload"))
+                                EditorApplication.delayCall += () => BuildAndUploadItem(item, updateItem_fn);
+                        }
+                        else wouldUploadAssetBundle = true;
                     }
                 }
                 else
@@ -289,6 +296,11 @@ namespace AltSpace_Unity_Uploader
             }
 
             EditorGUILayout.EndHorizontal();
+            if (wouldUploadAssetBundle)
+                GUILayout.Label(
+                    "The Universal Rendering Pipeline (URP) is not configured,\n" +
+                    "please set up manually or 'Convert to URP' in the Settings dialog to enable uploading."
+                    , new GUIStyle() { fontStyle = FontStyle.Bold });
         }
 
     }
